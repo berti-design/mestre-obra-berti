@@ -1992,9 +1992,9 @@ body.tabs-active .tab-panel.active{max-width:900px;margin:0 auto;padding:12px 12
   </div>
   <div id="topbar-pct" onclick="toggleDrawer()">—%</div>
   <!-- Indicador de backup -->
-  <div id="backup-pill" onclick="mostrarStatusBackup()" title="Status do backup">
+  <div id="backup-pill" onclick="sbSyncManual()" title="Clique para sincronizar com a nuvem">
     <span id="backup-pill-dot"></span>
-    <span id="backup-pill-txt">--:--</span>
+    <span id="backup-pill-txt">☁</span>
   </div>
   <button id="topbar-toggle" onclick="toggleDrawer()" title="Painel rápido"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
 </div>
@@ -2215,6 +2215,17 @@ body.tabs-active .tab-panel.active{max-width:900px;margin:0 auto;padding:12px 12
     <!-- ⑤ INTEGRAÇÕES (global) -->
     <div class="separador" onclick="toggleSep(this)"><div class="separador-label"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Integrações (global — vale para todas as obras)<span class="sep-chv">▾</span></div><div class="separador-line"></div></div>
     <div class="info-box">Estas chaves são salvas no navegador e funcionam em <b>qualquer obra</b>. Configure uma vez só.</div>
+
+    <!-- ─── Supabase Sync ─── -->
+    <div id="sb-card" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1.5px solid #3ECF8E;border-radius:var(--radius);margin-bottom:12px">
+      <div style="width:8px;height:8px;border-radius:50%;background:#3ECF8E;flex-shrink:0" id="sb-pill-dot"></div>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;color:var(--ink)">☁ Sync na Nuvem — Ativo</div>
+        <div style="font-size:10px;color:var(--muted)">Dados sincronizam automaticamente entre celular e computador</div>
+        <div id="sb-last-sync-lbl" style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:2px"></div>
+      </div>
+      <button class="btn btn-sm" style="background:#3ECF8E;color:#fff;border:none;flex-shrink:0" onclick="sbSyncManual()">Sincronizar</button>
+    </div>
 
     <!-- API Anthropic -->
     <div id="api-anthropic-bloco" style="margin-bottom:12px">
@@ -3674,6 +3685,167 @@ function sanitizeState(s){
   return s;
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// SUPABASE — SYNC ENTRE DISPOSITIVOS
+// ═══════════════════════════════════════════════════════════════
+const SB_URL     = 'https://tdylutdfzgtcfyhynenk.supabase.co';
+const SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkeWx1dGRmemd0Y2Z5aHluZW5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyODQxMjcsImV4cCI6MjA4ODg2MDEyN30.k44CAV8O8AGhq4lzy-Ms5CF6JsW2fgMqLEegKb4K-pg';
+const SB_TABLE   = 'cockpit_obras';
+
+let _sbSaveTimer  = null;
+let _sbOnline     = null; // null=desconhecido, true, false
+
+function sbHeaders(){
+  return {
+    'Content-Type':  'application/json',
+    'apikey':        SB_KEY,
+    'Authorization': 'Bearer ' + SB_KEY,
+    'Prefer':        'resolution=merge-duplicates'
+  };
+}
+
+// Salva state no Supabase (debounced 3s)
+function sbSave(obraKey, stateObj){
+  clearTimeout(_sbSaveTimer);
+  _sbSaveTimer = setTimeout(async function(){
+    try {
+      const payload = {
+        obra_key:   obraKey,
+        data:       stateObj,
+        updated_at: new Date().toISOString()
+      };
+      const r = await fetch(SB_URL + '/rest/v1/' + SB_TABLE, {
+        method:  'POST',
+        headers: sbHeaders(),
+        body:    JSON.stringify(payload)
+      });
+      if(r.ok || r.status === 409){
+        _sbOnline = true;
+        sbAtualizarIndicador('ok');
+        const lbl2 = document.getElementById('sb-last-sync-lbl');
+        if(lbl2) lbl2.textContent = 'Sync: ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      } else {
+        throw new Error('HTTP ' + r.status);
+      }
+    } catch(e){
+      _sbOnline = false;
+      sbAtualizarIndicador('fail');
+      console.warn('[Supabase] save falhou:', e.message);
+    }
+  }, 3000);
+}
+
+// Carrega obra do Supabase — retorna objeto state ou null
+async function sbLoad(obraKey){
+  try {
+    sbAtualizarIndicador('sync');
+    const r = await fetch(
+      SB_URL + '/rest/v1/' + SB_TABLE +
+      '?obra_key=eq.' + encodeURIComponent(obraKey) +
+      '&select=data,updated_at&limit=1',
+      { headers: sbHeaders() }
+    );
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const rows = await r.json();
+    _sbOnline = true;
+    sbAtualizarIndicador('ok');
+    if(rows && rows.length > 0) return { data: rows[0].data, updated_at: rows[0].updated_at };
+    return null;
+  } catch(e){
+    _sbOnline = false;
+    sbAtualizarIndicador('fail');
+    console.warn('[Supabase] load falhou:', e.message);
+    return null;
+  }
+}
+
+// Lista obras salvas no Supabase
+async function sbListarObras(){
+  try {
+    const r = await fetch(
+      SB_URL + '/rest/v1/' + SB_TABLE + '?select=obra_key,updated_at&order=updated_at.desc',
+      { headers: sbHeaders() }
+    );
+    if(!r.ok) return [];
+    return await r.json();
+  } catch(e){ return []; }
+}
+
+// Exclui obra do Supabase
+async function sbDeletarObra(obraKey){
+  try {
+    await fetch(
+      SB_URL + '/rest/v1/' + SB_TABLE + '?obra_key=eq.' + encodeURIComponent(obraKey),
+      { method: 'DELETE', headers: sbHeaders() }
+    );
+  } catch(e){}
+}
+
+// Indicador visual no pill
+function sbAtualizarIndicador(estado){
+  const dot = document.getElementById('backup-pill-dot');
+  const txt = document.getElementById('backup-pill-txt');
+  const pill= document.getElementById('backup-pill');
+  if(!pill) return;
+  pill.style.display = 'flex';
+  pill.classList.remove('pill-ok','pill-sync','pill-fail');
+  if(estado === 'ok'){
+    pill.classList.add('pill-ok');
+    const hm = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    if(txt) txt.textContent = hm;
+    // Atualizar também o label do modal
+    const lbl = document.getElementById('sync-last-time');
+    if(lbl) lbl.textContent = 'Sync nuvem: ' + hm;
+  } else if(estado === 'sync'){
+    pill.classList.add('pill-sync');
+    if(txt) txt.textContent = 'sync…';
+  } else {
+    pill.classList.add('pill-fail');
+    if(txt) txt.textContent = 'offline';
+  }
+}
+
+// Sincronização manual — puxa do Supabase e mescla se for mais novo
+async function sbVerStatus(){
+  const obraKey = slugify(state?.config?.obra||'default');
+  const lbl = document.getElementById('sb-last-sync-lbl');
+  toast('☁ Verificando conexão com a nuvem…','info');
+  const remoto = await sbLoad(obraKey);
+  if(remoto){
+    const dt = new Date(remoto.updated_at).toLocaleString('pt-BR');
+    if(lbl) lbl.textContent = 'Último sync: ' + dt;
+    toast('✓ Nuvem acessível — último sync: ' + dt, 'success');
+  } else {
+    toast('⚠ Sem conexão com a nuvem ou obra não sincronizada ainda', 'warning');
+  }
+}
+
+async function sbSyncManual(){
+  if(!state?.config?.obra){ toast('Nenhuma obra carregada','error'); return; }
+  const obraKey = slugify(state.config.obra||'default');
+  toast('☁ Buscando dados na nuvem…','info');
+  sbAtualizarIndicador('sync');
+  const remoto = await sbLoad(obraKey);
+  if(!remoto){ toast('Sem dados na nuvem para esta obra','warning'); return; }
+
+  // Comparar timestamps
+  const tsLocal  = state._savedAt ? new Date(state._savedAt).getTime() : 0;
+  const tsRemoto = new Date(remoto.updated_at).getTime();
+
+  if(tsRemoto > tsLocal){
+    state = migrateState(remoto.data);
+    sanitizeState(state);
+    currentObraKey = 'cockpit_' + obraKey;
+    localStorage.setItem(currentObraKey, JSON.stringify(state));
+    restoreUI();
+    renderAll();
+    toast('✓ Dados atualizados da nuvem!','success');
+  } else {
+    toast('✓ Seus dados locais já são os mais recentes','success');
+  }
+}
+
 function saveState(){
   marcarRoteiroSujo();
   clearTimeout(saveTimer);
@@ -3681,6 +3853,7 @@ function saveState(){
     try {
       sanitizeState(state); // garante estrutura antes de salvar
       state._version = STATE_VERSION;
+      state._savedAt  = new Date().toISOString();
       const toSave = JSON.parse(JSON.stringify(state));
       toSave.fotos = toSave.fotos.map(f => {
         if(f.cloud && f.url) return { ...f, src: f.url };
@@ -3692,6 +3865,11 @@ function saveState(){
       }
       currentObraKey = newKey;
       localStorage.setItem(newKey, JSON.stringify(toSave));
+
+      // Sync Supabase (debounced 3s)
+      const sbData = JSON.parse(JSON.stringify(toSave));
+      sbData.fotos = (sbData.fotos||[]).map(function(f){ return f.cloud&&f.url ? {...f,src:f.url,b64:undefined} : {...f,b64:undefined}; });
+      sbSave(newKey.replace('cockpit_',''), sbData);
 
       // Disparar auto-sync debounced
       _autoSyncPending = true;
@@ -3955,10 +4133,31 @@ function loadState(key){
       state = migrateState(saved);
       sanitizeState(state);
       restoreUI();
+      // Checar nuvem em background — atualiza se tiver dados mais novos
+      sbLoadBackground(key.replace('cockpit_',''));
       return true;
     }
   } catch(e){}
   return false;
+}
+
+// Carrega nuvem em background e atualiza silenciosamente se for mais novo
+async function sbLoadBackground(obraKey){
+  try {
+    const remoto = await sbLoad(obraKey);
+    if(!remoto) return;
+    const tsLocal  = state._savedAt ? new Date(state._savedAt).getTime() : 0;
+    const tsRemoto = new Date(remoto.updated_at).getTime();
+    if(tsRemoto > tsLocal + 5000){ // 5s de tolerância
+      state = migrateState(remoto.data);
+      sanitizeState(state);
+      currentObraKey = 'cockpit_' + obraKey;
+      localStorage.setItem(currentObraKey, JSON.stringify(state));
+      restoreUI();
+      renderAll();
+      toast('☁ Dados sincronizados da nuvem','success');
+    }
+  } catch(e){ /* silencioso */ }
 }
 
 function restoreUI(){
@@ -10902,10 +11101,56 @@ function getObrasIndex(){
   return obras;
 }
 
+
+// Restaurar obras da nuvem para localStorage
+async function sbRestaurarDaNuvem(){
+  toast('☁ Buscando obras na nuvem…','info');
+  const remotas = await sbListarObras();
+  if(!remotas || !remotas.length){ toast('Nenhuma obra na nuvem','warning'); return; }
+  let restauradas = 0;
+  for(const r of remotas){
+    const key = 'cockpit_' + r.obra_key;
+    const local = localStorage.getItem(key);
+    if(!local){
+      // Baixar dados completos
+      const full = await sbLoad(r.obra_key);
+      if(full && full.data){
+        localStorage.setItem(key, JSON.stringify(full.data));
+        restauradas++;
+      }
+    }
+  }
+  if(restauradas > 0){
+    toast('✓ '+restauradas+' obra(s) restaurada(s) da nuvem!','success');
+    renderObraSelector();
+  } else {
+    toast('Todas as obras já estão atualizadas','success');
+  }
+}
+
 function renderObraSelector(){
   var obras = getObrasIndex();
   var el = document.getElementById('os-lista');
   if(!el) return;
+  // Buscar obras da nuvem em background e adicionar as que não existem localmente
+  sbListarObras().then(function(remotas){
+    if(!remotas || !remotas.length) return;
+    var keysLocais = obras.map(function(o){ return o.key; });
+    var novas = remotas.filter(function(r){
+      return !keysLocais.includes('cockpit_'+r.obra_key) && !keysLocais.includes(r.obra_key);
+    });
+    if(novas.length){
+      // Adicionar badge no topo
+      var aviso = document.getElementById('os-cloud-aviso');
+      if(!aviso){
+        aviso = document.createElement('div');
+        aviso.id = 'os-cloud-aviso';
+        aviso.style.cssText = 'background:#D1FAE5;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#065F46;display:flex;align-items:center;gap:8px';
+        aviso.innerHTML = '☁ <b>'+novas.length+' obra(s) encontrada(s) na nuvem.</b> <button onclick="sbRestaurarDaNuvem()" style="margin-left:auto;background:#065F46;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">Restaurar</button>';
+        el.parentNode.insertBefore(aviso, el);
+      }
+    }
+  }).catch(function(){});
   var empresaName = localStorage.getItem('mdo_empresa_name');
   var logoEl = document.getElementById('os-logo-text');
   if(logoEl && empresaName) logoEl.innerHTML = esc(empresaName) + '<span>.</span>';

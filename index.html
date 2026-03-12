@@ -6331,14 +6331,9 @@ async function callClaude(opts){
 
   let resp;
   try {
-    resp = await fetch('https://api.anthropic.com/v1/messages', {
+    resp = await fetch('https://anthropic-proxy.berti-b52.workers.dev', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': directKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
   } catch(netErr){

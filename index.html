@@ -7215,7 +7215,7 @@ function getDiarioContexto(){
   const linhas = DIAS_SEMANA
     .map(dia => {
       const entry = d[dia];
-      const temTexto    = !!(entry?.(texto||'').trim());
+      const temTexto    = !!(entry && (entry.texto||'').trim());
       const temPresenca = Object.values(entry?.presenca||{}).some(Boolean);
       if(!entry || (!temTexto && !temPresenca)) return null; // ignora dias vazios
 
@@ -11463,7 +11463,7 @@ async function gerarBriefing(){
 
   // Histórico da semana — diário dos dias já registrados
   const diarioSemana = diaKeys.slice(0, diaIdx+1)
-    .map(d => state.diario[d]?.(texto||'').trim() ? `${d.toUpperCase()}: ${state.diario[d].texto.substring(0,200)}` : null)
+    .map(d => (state.diario[d] && (state.diario[d].texto||'').trim()) ? `${d.toUpperCase()}: ${state.diario[d].texto.substring(0,200)}` : null)
     .filter(Boolean).join('\n');
 
   // Última visita processada

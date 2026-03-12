@@ -3475,11 +3475,29 @@ let _autoSyncPending = false;
 const AUTO_SYNC_DELAY_MS = 30_000;
 const AUTO_SYNC_MAX_RETRY = 3;
 
+function sanitizeState(s){
+  // Garante que todos os campos que devem ser arrays realmente são arrays
+  if(!s) return s;
+  if(!Array.isArray(s.servicos))   s.servicos   = [];
+  if(!Array.isArray(s.equipes))    s.equipes    = [];
+  if(!Array.isArray(s.pagamentos)) s.pagamentos = [];
+  if(!Array.isArray(s.fotos))      s.fotos      = [];
+  if(!Array.isArray(s.pendencias)) s.pendencias = [];
+  if(!Array.isArray(s.materiais))  s.materiais  = [];
+  if(!Array.isArray(s.notas))      s.notas      = [];
+  if(!Array.isArray(s.visitas))    s.visitas    = [];
+  if(typeof s.notas === 'string')  s.notas      = [];
+  if(!s.config)                    s.config     = {};
+  if(!s.diario)                    s.diario     = {};
+  return s;
+}
+
 function saveState(){
   marcarRoteiroSujo();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
     try {
+      sanitizeState(state); // garante estrutura antes de salvar
       state._version = STATE_VERSION;
       const toSave = JSON.parse(JSON.stringify(state));
       toSave.fotos = toSave.fotos.map(f => {
@@ -3751,6 +3769,7 @@ function loadState(key){
     if(saved) {
       currentObraKey = key;
       state = migrateState(saved);
+      sanitizeState(state);
       restoreUI();
       return true;
     }
@@ -7300,10 +7319,6 @@ async function processarComIA(){
   const texto = document.getElementById('transcricao').value.trim();
   if(!texto){ toast('Escreva ou grave uma narrativa primeiro', 'error'); return; }
 
-  const apiKey = getApiKey();
-  const proxyUrl = getSyncScript();
-  if(!apiKey && !proxyUrl){ toast('Configure a API Anthropic ou o Apps Script de Sync em Configurações → Integrações', 'error'); return; }
-
   const btn = document.getElementById('btn-processar');
   const icon = document.getElementById('processar-icon');
   btn.disabled = true;
@@ -7440,9 +7455,7 @@ function getTipoDoc(file){
 
 // ── Processador principal ───────────────────────────────
 async function processarDocFinanceiro(file, _queueMode){
-  const apiKey = getApiKey();
-  const _proxy1 = getSyncScript();
-  if(!apiKey && !_proxy1){ toast('Configure a API Anthropic ou o Apps Script de Sync em Configurações → Integrações','error'); return; }
+
 
   const tipo = getTipoDoc(file);
   if(tipo === 'desconhecido'){
@@ -7815,9 +7828,7 @@ async function processarSemanal(){
     scrollToSec('sec-visita'); return;
   }
 
-  const apiKey = getApiKey();
-  const _proxy2 = getSyncScript();
-  if(!apiKey && !_proxy2){ toast('Configure a API Anthropic ou o Apps Script de Sync em Configurações → Integrações', 'error'); return; }
+
 
   const btn = document.getElementById('btn-proc-sem');
   const icon = document.getElementById('proc-sem-icon');

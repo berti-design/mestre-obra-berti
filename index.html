@@ -215,6 +215,21 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 /* ───── PAGAMENTOS ───── */
 .pag-totals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
 .pag-total-card{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center}
+/* ── FILTROS DE PAGAMENTOS ── */
+.pag-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius)}
+.pag-filter-group{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.pag-filter-group+.pag-filter-group{margin-left:4px;padding-left:10px;border-left:1px solid var(--border)}
+.pag-filter-chip{padding:4px 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--font-mono);white-space:nowrap}
+.pag-filter-chip:hover{border-color:var(--accent);color:var(--accent)}
+.pag-filter-chip.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.pag-filter-chip.active.entrada{background:#065F46;border-color:#065F46}
+.pag-filter-chip.active.saida{background:var(--danger);border-color:var(--danger)}
+.pag-filter-chip.active.pendente{background:var(--warning);border-color:var(--warning)}
+.pag-filter-chip.active.pago{background:#065F46;border-color:#065F46}
+.pag-filter-chip.active.agendado{background:#5B21B6;border-color:#5B21B6}
+.pag-filter-select{padding:4px 8px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:11px;font-weight:600;font-family:var(--font-mono);cursor:pointer;outline:none;transition:border-color .15s}
+.pag-filter-select:focus,.pag-filter-select.active{border-color:var(--accent);color:var(--accent)}
+.pag-empty-filter{padding:24px;text-align:center;color:var(--muted);font-size:13px}
 .pag-total-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase}
 .pag-total-val{font-family:var(--font-mono);font-size:15px;font-weight:500;margin-top:2px}
 .pag-total-val.entrada{color:#065F46}
@@ -425,6 +440,10 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 .pag-h-chevron{font-size:10px;color:var(--muted);flex-shrink:0;transition:transform .2s}
 .pag-card.open .pag-h-chevron{transform:rotate(180deg)}
 .pag-h-nf{font-size:9px;font-family:var(--font-mono);background:var(--blue-soft);color:var(--info);padding:1px 5px;border-radius:4px;flex-shrink:0}
+.pag-h-status{font-size:9px;font-family:var(--font-mono);font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0;letter-spacing:.2px}
+.pag-h-status.st-pendente{background:var(--yellow-soft);color:var(--warning)}
+.pag-h-status.st-pago{background:var(--green-soft);color:#065F46}
+.pag-h-status.st-agendado{background:#EDE9FE;color:#5B21B6}
 
 .confirm-overlay{
   display:none;position:fixed;inset:0;z-index:300;
@@ -2762,6 +2781,35 @@ body.tabs-active .tab-panel.active{max-width:900px;margin:0 auto;padding:12px 12
       <div class="pag-total-card"><div class="pag-total-label">Saldo</div><div class="pag-total-val saldo" id="pag-saldo">R$ 0</div></div>
     </div>
     <div id="pagamentos-list"></div>
+    <!-- ── BARRA DE FILTROS ── -->
+    <div class="pag-filters" id="pag-filters">
+      <div class="pag-filter-group">
+        <button class="pag-filter-chip active" data-filter="tipo" data-value="todos" onclick="setPagFilter('tipo','todos')">Todos</button>
+        <button class="pag-filter-chip entrada" data-filter="tipo" data-value="ENTRADA" onclick="setPagFilter('tipo','ENTRADA')">Entrada</button>
+        <button class="pag-filter-chip saida" data-filter="tipo" data-value="SAÍDA" onclick="setPagFilter('tipo','SAÍDA')">Saída</button>
+      </div>
+      <div class="pag-filter-group">
+        <button class="pag-filter-chip active" data-filter="status" data-value="todos" onclick="setPagFilter('status','todos')">Todos</button>
+        <button class="pag-filter-chip pendente" data-filter="status" data-value="PENDENTE" onclick="setPagFilter('status','PENDENTE')">Pendente</button>
+        <button class="pag-filter-chip pago" data-filter="status" data-value="PAGO" onclick="setPagFilter('status','PAGO')">Pago</button>
+        <button class="pag-filter-chip agendado" data-filter="status" data-value="AGENDADO" onclick="setPagFilter('status','AGENDADO')">Agendado</button>
+      </div>
+      <div class="pag-filter-group">
+        <select class="pag-filter-select" id="pag-filter-cat" onchange="setPagFilter('categoria',this.value)">
+          <option value="todos">Todas categorias</option>
+          <option value="Mão de Obra">Mão de Obra</option>
+          <option value="Material">Material</option>
+          <option value="Aluguel de Equipamento">Aluguel de Equipamento</option>
+          <option value="Consultoria">Consultoria</option>
+          <option value="Administração">Administração</option>
+          <option value="Transporte">Transporte</option>
+          <option value="Despesa Geral">Despesa Geral</option>
+          <option value="Receita">Receita</option>
+          <option value="Reembolso">Reembolso</option>
+        </select>
+      </div>
+    </div>
+    <div id="pag-filtered-list"></div>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="addPagamento()">＋ Novo Lançamento</button>
       <button class="btn btn-outline" onclick="document.getElementById('nf-doc-input').click()">
@@ -2769,7 +2817,6 @@ body.tabs-active .tab-panel.active{max-width:900px;margin:0 auto;padding:12px 12
         Importar Documento (IA)
       </button>
       <input type="file" id="nf-doc-input" accept="image/*,.pdf,application/pdf,.json,application/json" multiple style="display:none" onchange="lerDocumentoFinanceiro(this)">
-      <button class="btn btn-outline" style="border-color:var(--accent);color:var(--accent)" onclick="registrarPagamentoCliente()">💵 Dar Baixa (cliente pagou)</button>
       <button class="wa-quick-btn" onclick="gerarMensagemWhatsApp()" title="Gerar mensagem de cobrança ou atualização para o cliente">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.025.507 3.934 1.399 5.61L0 24l6.545-1.376C8.133 23.487 10.025 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z" opacity=".15"/></svg>
         Mensagem Cliente
@@ -3350,12 +3397,12 @@ body.tabs-active .tab-panel.active{max-width:900px;margin:0 auto;padding:12px 12
       </div>
       <div class="mfn-grid">
         <div class="field">
-          <label>Código <span class="mfn-cod-sugerido" id="mfn-cod-hint"></span></label>
-          <input id="mfn-cod" placeholder="EQ-XXX-01" style="font-family:var(--font-mono);text-transform:uppercase">
+          <label>Código <span style="font-size:10px;color:var(--accent);font-weight:600">· gerado automaticamente</span></label>
+          <input id="mfn-cod" readonly style="font-family:var(--font-mono);text-transform:uppercase;background:var(--gray-soft);color:var(--muted);cursor:default" title="Gerado automaticamente com base no tipo">
         </div>
         <div class="field">
           <label>Tipo</label>
-          <select id="mfn-tipo" onchange="sugerirCodigoFornecedor()">
+          <select id="mfn-tipo" onchange="gerarCodigoFornecedor()">
             <option value="Equipe">Equipe</option>
             <option value="Fornecedor">Fornecedor / Material</option>
             <option value="Consultor">Consultor</option>
@@ -3501,9 +3548,9 @@ body.tabs-active .tab-panel.active{max-width:900px;margin:0 auto;padding:12px 12
             <option value="Consultoria">Consultoria</option>
             <option value="Administração">Administração</option>
             <option value="Transporte">Transporte</option>
-            <option value="Imposto / Taxa">Imposto / Taxa</option>
-            <option value="Receita">Receita</option>
             <option value="Despesa Geral">Despesa Geral</option>
+            <option value="Receita">Receita</option>
+            <option value="Reembolso">Reembolso</option>
           </select>
         </div>
       </div>
@@ -3522,6 +3569,15 @@ body.tabs-active .tab-panel.active{max-width:900px;margin:0 auto;padding:12px 12
           <select id="nf-tipo">
             <option value="SAÍDA">SAÍDA</option>
             <option value="ENTRADA">ENTRADA</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Status</label>
+          <select id="nf-status">
+            <option value="PENDENTE">PENDENTE</option>
+            <option value="PAGO">PAGO</option>
+            <option value="AGENDADO">AGENDADO</option>
           </select>
         </div>
       </div>
@@ -3560,9 +3616,12 @@ body.tabs-active .tab-panel.active{max-width:900px;margin:0 auto;padding:12px 12
 // STATE
 // ───────────────────────────────────────────────
 const CATS_SERVICO = ['Preliminares','Demolições','Infraestrutura','Alvenaria','Construções e Regularizações','Impermeabilização','Pintura','Hidráulica','Elétrica','Ar-condicionado','Drywall / Forro','Revestimento','Cobertura','Serralheria','Estruturas Especiais','PPCI / Incêndio','Projetos','Marcenaria','Limpeza','Administração'];
-const CATS_PAG = ['Mão de Obra','Material','Aluguel de Equipamento','Consultoria','Administração','Transporte','Despesa Geral','Receita','Reembolso'];
+const CATS_SAIDA = ['Mão de Obra','Material','Aluguel de Equipamento','Consultoria','Administração','Transporte','Despesa Geral'];
+const CATS_ENTRADA = ['Receita','Reembolso'];
+const CATS_PAG = [...CATS_SAIDA, ...CATS_ENTRADA]; // lista completa (backward compat)
+function catsPorTipo(tipo){ return tipo === 'ENTRADA' ? CATS_ENTRADA : CATS_SAIDA; }
 const STATUS_SRV = ['A EXECUTAR','EM ANDAMENTO','CONCLUÍDO','PAUSADO','AGUARDANDO PROJETO'];
-const FORMAS = ['PIX','transferência','boleto','cheque','dinheiro'];
+const FORMAS = ['PIX','transferência','boleto','cheque','dinheiro','cartão'];
 const DIAS = ['seg','ter','qua','qui','sex'];
 const STATE_VERSION = 4;
 
@@ -6524,8 +6583,34 @@ function updateEqNota(idx, val){
 // ───────────────────────────────────────────────
 // RENDER PAGAMENTOS
 // ───────────────────────────────────────────────
+// ── ESTADO DOS FILTROS DE PAGAMENTO ──────────────────────
+const _pagFilter = { tipo: 'todos', status: 'todos', categoria: 'todos' };
+
+function setPagFilter(key, value){
+  _pagFilter[key] = value;
+
+  // Atualizar visual dos chips (tipo e status usam botões; categoria usa select)
+  if(key !== 'categoria'){
+    document.querySelectorAll(`.pag-filter-chip[data-filter="${key}"]`).forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.value === value);
+    });
+  } else {
+    const sel = document.getElementById('pag-filter-cat');
+    if(sel) sel.className = 'pag-filter-select' + (value !== 'todos' ? ' active' : '');
+  }
+
+  renderPagamentos();
+}
+
+function _pagPassaFiltro(p){
+  if(_pagFilter.tipo !== 'todos' && p.tipo !== _pagFilter.tipo) return false;
+  if(_pagFilter.status !== 'todos' && (p.status||'PENDENTE') !== _pagFilter.status) return false;
+  if(_pagFilter.categoria !== 'todos' && p.categoria !== _pagFilter.categoria) return false;
+  return true;
+}
+
 function addPagamento(){
-  state.pagamentos.push({ data:'', descricao:'', tipo:'SAÍDA', categoria:'Mão de Obra', fornecedor:'', valor:0, forma:'PIX', nf:'' });
+  state.pagamentos.push({ data:'', descricao:'', tipo:'SAÍDA', categoria:'Mão de Obra', fornecedor:'', valor:0, forma:'PIX', nf:'', status:'PENDENTE', obs:'' });
   renderPagamentos();
   saveState();
 }
@@ -6538,8 +6623,50 @@ function removePagamento(idx){
 
 function updatePag(idx, field, val){
   state.pagamentos[idx][field] = field==='valor' ? parseFloat(val)||0 : val;
-  if(field==='valor'||field==='tipo') calcPagTotals();
+  if(field==='tipo'){
+    // resetar categoria para o primeiro item válido do novo tipo
+    const cats = catsPorTipo(val);
+    if(!cats.includes(state.pagamentos[idx].categoria)){
+      state.pagamentos[idx].categoria = cats[0];
+    }
+    calcPagTotals();
+    saveState();
+    renderPagamentos(); // re-render completo — muda badges, categoria options
+    return;
+  }
+  if(field==='valor') calcPagTotals();
+  patchPagCardHeader(idx); // patch cirúrgico — não fecha o card
   saveState();
+}
+
+// Atualiza apenas o header do card (sem re-render completo)
+function patchPagCardHeader(idx){
+  const card = document.getElementById('pagcard-'+idx);
+  if(!card) return;
+  const p = state.pagamentos[idx];
+  if(!p) return;
+
+  const h = card.querySelector('.pag-card-header');
+  if(!h) return;
+
+  const tipoClass = p.tipo==='ENTRADA'?'entrada':'saida';
+  const valFmt    = p.valor ? 'R$ '+fmtNum(parseFloat(p.valor)) : '—';
+  const dataFmt   = p.data ? p.data.split('-').reverse().join('/') : '—';
+  const stCls     = {PENDENTE:'st-pendente',PAGO:'st-pago',AGENDADO:'st-agendado'}[p.status||'PENDENTE']||'st-pendente';
+
+  const elData   = h.querySelector('.pag-h-data');
+  const elDesc   = h.querySelector('.pag-h-desc');
+  const elNf     = h.querySelector('.pag-h-nf');
+  const elStatus = h.querySelector('.pag-h-status');
+  const elTipo   = h.querySelector('.pag-h-tipo');
+  const elVal    = h.querySelector('.pag-h-val');
+
+  if(elData)   elData.textContent = dataFmt;
+  if(elDesc){  elDesc.textContent = p.descricao || 'Sem descrição'; elDesc.title = p.descricao || ''; }
+  if(elNf){    elNf.textContent = p.nf ? 'NF '+p.nf : ''; elNf.style.display = p.nf ? '' : 'none'; }
+  if(elStatus){ elStatus.textContent = p.status||'PENDENTE'; elStatus.className = 'pag-h-status '+stCls; }
+  if(elTipo){  elTipo.textContent = p.tipo==='ENTRADA'?'ENTRADA':'SAÍDA'; elTipo.className = 'pag-h-tipo '+tipoClass; }
+  if(elVal){   elVal.textContent = valFmt; elVal.className = 'pag-h-val '+tipoClass; }
 }
 
 function calcPagTotals(){
@@ -6557,25 +6684,37 @@ function calcPagTotals(){
 }
 
 function renderPagamentos(){
-  const el = document.getElementById('pagamentos-list');
+  // pagamentos-list mantido vazio — renderização ocorre em pag-filtered-list
+  const elLegacy = document.getElementById('pagamentos-list');
+  if(elLegacy) elLegacy.innerHTML = '';
+
+  const el = document.getElementById('pag-filtered-list');
+  if(!el) return;
+
   if(!state.pagamentos.length){
     el.innerHTML='<div class="empty"><div class="empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>Nenhum lançamento. Clique em "+ Novo Lançamento".</div>';
     updateSubtitle('sub-pagamentos','Sem lançamentos');
     calcPagTotals();
     return;
   }
+
   let html='';
+  let visiveis=0;
   state.pagamentos.forEach((p,i)=>{
+    if(!_pagPassaFiltro(p)) return;
+    visiveis++;
     const tipoClass = p.tipo==='ENTRADA'?'entrada':'saida';
     const valFmt = p.valor ? 'R$ '+fmtNum(parseFloat(p.valor)) : '—';
     const dataFmt = p.data ? p.data.split('-').reverse().join('/') : '—';
+    const stCls = {PENDENTE:'st-pendente',PAGO:'st-pago',AGENDADO:'st-agendado'}[p.status||'PENDENTE']||'st-pendente';
     const fornWarn = !eqConhecida(p.fornecedor) && p.fornecedor
       ? `<span title="Não cadastrado" style="color:var(--warning);font-size:13px;cursor:pointer" onclick="abrirModalFornecedorNovo('${esc(p.fornecedor||'')}',${i})">⚠</span>` : '';
-    html+=`<div class="pag-card" id="pagcard-${i}">
+    html+=`<div class="pag-card" id="pagcard-${i}" data-idx="${i}">
       <div class="pag-card-header" onclick="togglePagCard(${i})">
         <span class="pag-h-data">${dataFmt}</span>
         <span class="pag-h-desc" title="${esc(p.descricao||'')}">${esc(p.descricao||'Sem descrição')}</span>
-        ${p.nf?`<span class="pag-h-nf">NF ${esc(p.nf)}</span>`:''}
+        <span class="pag-h-nf" style="${p.nf?'':'display:none'}">NF ${esc(p.nf||'')}</span>
+        <span class="pag-h-status ${stCls}">${p.status||'PENDENTE'}</span>
         <span class="pag-h-tipo ${tipoClass}">${p.tipo==='ENTRADA'?'ENTRADA':'SAÍDA'}</span>
         <span class="pag-h-val ${tipoClass}">${valFmt}</span>
         <span class="pag-h-chevron">▾</span>
@@ -6592,7 +6731,7 @@ function renderPagamentos(){
           </div>
           <div class="field"><label>Categoria</label>
             <select onchange="updatePag(${i},'categoria',this.value)">
-              ${CATS_PAG.map(c=>`<option value="${c}"${p.categoria===c?' selected':''}>${c}</option>`).join('')}
+              ${catsPorTipo(p.tipo).map(c=>`<option value="${c}"${p.categoria===c?' selected':''}>${c}</option>`).join('')}
             </select>
           </div>
           <div class="field"><label>Fornecedor</label>
@@ -6611,6 +6750,14 @@ function renderPagamentos(){
             </select>
           </div>
           <div class="field"><label>Nº NF</label><input type="text" value="${esc(p.nf||'')}" placeholder="Nº ou vazio" onchange="updatePag(${i},'nf',this.value)"></div>
+          <div class="field"><label>Status</label>
+            <select onchange="updatePag(${i},'status',this.value)">
+              <option value="PENDENTE"${(p.status||'PENDENTE')==='PENDENTE'?' selected':''}>PENDENTE</option>
+              <option value="PAGO"${p.status==='PAGO'?' selected':''}>PAGO</option>
+              <option value="AGENDADO"${p.status==='AGENDADO'?' selected':''}>AGENDADO</option>
+            </select>
+          </div>
+          <div class="field" style="grid-column:1/-1"><label>Observações</label><input type="text" value="${esc(p.obs||'')}" placeholder="Observações opcionais" onchange="updatePag(${i},'obs',this.value)"></div>
           ${p.forma==='boleto'?`<div class="field" style="grid-column:1/-1"><label style="color:var(--warning);font-weight:700">📋 Código de Barras / Linha Digitável</label><input type="text" value="${esc(p.codigo_barras||'')}" placeholder="00000.00000 00000.000000 00000.000000 0 00000000000000" onchange="updatePag(${i},'codigo_barras',this.value)" style="font-family:var(--font-mono);font-size:11px;letter-spacing:.5px"></div>`:''}
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:8px">
@@ -6619,8 +6766,19 @@ function renderPagamentos(){
       </div>
     </div>`;
   });
+
+  if(!visiveis){
+    html='<div class="pag-empty-filter">Nenhum lançamento corresponde aos filtros selecionados.</div>';
+  }
+
   el.innerHTML = html;
-  updateSubtitle('sub-pagamentos', `${state.pagamentos.length} lançamento${state.pagamentos.length!==1?'s':''}`);
+
+  const total = state.pagamentos.length;
+  const filtrado = _pagFilter.tipo!=='todos' || _pagFilter.status!=='todos' || _pagFilter.categoria!=='todos';
+  const label = filtrado
+    ? `${visiveis} de ${total} lançamento${total!==1?'s':''} (filtrado)`
+    : `${total} lançamento${total!==1?'s':''}`;
+  updateSubtitle('sub-pagamentos', total ? label : 'Sem lançamentos');
   calcPagTotals();
   atualizarBadgesAbas();
 }
@@ -8162,7 +8320,7 @@ const GSCRIPT_CODE = `function doPost(e) {
           lastNum++;
           var numStr = String(lastNum).padStart(3, '0');
           // Colunas: Nº · DATA · DESCRIÇÃO · TIPO · CATEGORIA · FORNECEDOR/CLIENTE · SRV_COD · NF/RECIBO · VALOR · FORMA PGTO · STATUS · OBS
-          fin.appendRow([numStr, p.data, p.descricao, p.tipo, p.categoria, p.fornecedor, p.srv_cod||'', p.nf||'', p.valor, p.forma||'', p.status||'EXECUTADA', p.obs||'']);
+          fin.appendRow([numStr, p.data, p.descricao, p.tipo, p.categoria, p.fornecedor, p.srv_cod||'', p.nf||'', p.valor, p.forma||'', p.status||'PENDENTE', p.obs||'']);
           result.updates++;
         });
       } else {
@@ -8436,7 +8594,7 @@ async function aplicarNaPlanilha(){
       data_fim:       s.data_fim       || '',
       prazo_dias:     parseInt(s.prazo_dias) || 0
     })),
-    pagamentos: (state.pagamentos||[]).map((p, idx) => ({
+    financeiro: (state.pagamentos||[]).map((p, idx) => ({
       numero:    String(idx + 1).padStart(3,'0'),
       data:      p.data ? fmtDateNum(p.data) : '',
       descricao: p.descricao  || '',
@@ -8446,8 +8604,8 @@ async function aplicarNaPlanilha(){
       srv_cod:   p.srv_cod    || '',
       nf:        p.nf         || '',
       valor:     parseFloat(p.valor) || 0,
-      forma_pgto:p.forma      || '',
-      status:    p.status     || 'PAGO',
+      forma:     p.forma      || '',
+      status:    p.status     || 'PENDENTE',
       obs:       p.obs        || ''
     }))
   };
@@ -8902,12 +9060,16 @@ Retorne APENAS JSON válido. Estrutura:
   "fornecedor": "nome ou razão social",
   "fornecedor_cod": "código da base se identificado (EQ-XXX ou FOR-XXX), ou vazio",
   "cnpj_fornecedor": "CNPJ no formato 00.000.000/0000-00 ou vazio",
+  "telefone_fornecedor": "telefone do fornecedor extraído do documento, ou vazio",
+  "email_fornecedor": "e-mail do fornecedor extraído do documento, ou vazio",
+  "pix_fornecedor": "chave PIX do fornecedor (CNPJ, CPF, e-mail ou chave aleatória), ou vazio",
+  "banco_fornecedor": "nome do banco do fornecedor, ou vazio",
   "numero_nf": "número do documento, NF, recibo, contrato, etc",
   "data": "DD/MM/AAAA — use a data de emissão ou vencimento principal",
   "descricao": "descrição resumida e objetiva dos serviços ou itens",
   "valor_total": 0.00,
   "tipo": "SAÍDA ou ENTRADA — SAÍDA para gastos/pagamentos nossos, ENTRADA para recebimentos do cliente",
-  "categoria_sugerida": "Material|Mão de Obra|Aluguel de Equipamento|Consultoria|Administração|Transporte|Imposto / Taxa|Receita|Despesa Geral",
+  "categoria_sugerida": "Mão de Obra|Material|Aluguel de Equipamento|Consultoria|Administração|Transporte|Despesa Geral|Receita|Reembolso",
   "forma_pagamento": "PIX|transferência|boleto|cheque|dinheiro|cartão",
   "confianca": "alta|media|baixa",
   "observacao": "notas relevantes sobre o documento ou dúvidas",
@@ -9019,6 +9181,17 @@ function _preencherFormNf(nf, file, tipo){
   if(nf.categoria_sugerida) setVal('nf-categoria', nf.categoria_sugerida);
   if(nf.forma_pagamento)    setVal('nf-forma',     nf.forma_pagamento);
   if(nf.tipo)               setVal('nf-tipo',      nf.tipo);
+  setVal('nf-status', 'PENDENTE'); // padrão ao importar — gestor confirma manualmente
+
+  // Guardar dados completos do fornecedor para pré-preencher o modal de cadastro
+  window._nfFornecedorData = {
+    nome:    nf.fornecedor       || '',
+    cnpj:    nf.cnpj_fornecedor  || '',
+    telefone:nf.telefone_fornecedor || '',
+    email:   nf.email_fornecedor || '',
+    pix:     nf.pix_fornecedor   || '',
+    banco:   nf.banco_fornecedor || ''
+  };
 
   // Badge de confiança
   const confRow = document.getElementById('nf-confianca-row');
@@ -9090,7 +9263,9 @@ function adicionarLancamentoExtra(idx){
     fornecedor: item.fornecedor_cod || item.fornecedor || '',
     valor:      parseFloat(item.valor_total) || 0,
     forma:      item.forma_pagamento || 'PIX',
-    nf:         item.numero_nf || ''
+    nf:         item.numero_nf || '',
+    status:     'PENDENTE',
+    obs:        ''
   });
   renderPagamentos();
   saveState();
@@ -9125,16 +9300,32 @@ function aplicarNf(){
     fornecedor: getVal('nf-fornecedor') || '',
     valor: parseFloat(getVal('nf-valor')) || 0,
     forma: getVal('nf-forma') || 'PIX',
-    nf: getVal('nf-numero') || ''
+    nf: getVal('nf-numero') || '',
+    status: getVal('nf-status') || 'PENDENTE',
+    obs: ''
   };
 
+  // Se o fornecedor não está cadastrado na obra → interceptar e abrir cadastro
+  if(pag.fornecedor && !eqConhecida(pag.fornecedor)){
+    window._pendingPag = pag; // guardar pagamento aguardando fornecedor
+    fecharNfModal();           // fechar o modal de NF antes de abrir o de cadastro
+    // Abrir modal de cadastro pré-preenchido com dados vindos do documento
+    abrirModalFornecedorNovo(pag.fornecedor, -1);
+    toast('⚠️ Fornecedor não encontrado — cadastre-o para lançar o pagamento.', 'warning', 5000);
+    return;
+  }
+
+  // Fornecedor conhecido (ou campo vazio) → lançar direto
+  _pushPagamento(pag);
+}
+
+// Empurra o pagamento para a lista, renderiza e fecha modal
+function _pushPagamento(pag){
   state.pagamentos.push(pag);
   renderPagamentos();
   saveState();
   fecharNfModal();
-  toast(`✅ Pagamento lançado: R$ ${fmtNum(pag.valor)} — ${pag.fornecedor}`, 'success');
-
-  // Open pagamentos section
+  toast(`✅ Pagamento lançado: R$ ${fmtNum(pag.valor)} — ${pag.fornecedor || 'sem fornecedor'}`, 'success');
   document.getElementById('sec-pagamentos').classList.add('sec-open');
 }
 
@@ -9195,7 +9386,9 @@ function confirmarBaixaCliente(){
   const semana = ctx.semana || c.semana || 1;
   const valorRaw = (document.getElementById('baixa-valor-input')||{}).value || '';
   const data = (document.getElementById('baixa-data-input')||{}).value || todayISO();
-  const valorNum = parseFloat(String(valorRaw).replace(/[^\d.,]/g,'').replace(',','.'));
+  // type="number" retorna string locale-independente (ex: "3555.29") — parseFloat direto é correto.
+  // A regex anterior mantinha o "." de milhar pt-BR e produzia valores incorretos.
+  const valorNum = parseFloat(valorRaw) || 0;
 
   if(!valorNum || valorNum <= 0){
     toast('Informe um valor válido', 'error');
@@ -9213,7 +9406,9 @@ function confirmarBaixaCliente(){
     fornecedor: c.cliente || c.razao_cliente || '',
     valor: valorNum,
     forma: c.forma_pagamento || 'PIX',
-    nf: ''
+    nf: '',
+    status: 'PAGO',
+    obs: ''
   });
 
   renderPagamentos();
@@ -12191,7 +12386,7 @@ function eqConhecida(nome){
 function proximoCodigo(tipo){
   const prefixo = TIPO_PREFIXO[tipo] || 'FOR-MAT';
   // Coletar todos os códigos existentes nas equipes da obra que começam com esse prefixo
-  const existentes = state.equipes
+  const existentes = (state.equipes || [])
     .map(e => e.cod || '')
     .filter(c => c.toUpperCase().startsWith(prefixo));
   // Pegar o maior número
@@ -12201,20 +12396,49 @@ function proximoCodigo(tipo){
     const num = parseInt(partes[partes.length-1]) || 0;
     if(num > max) max = num;
   });
-  // Formatar: EQ-XXX-01 precisa de subprefixo — simplificar para o usuário editar
   const proximo = String(max + 1).padStart(2, '0');
-  if(tipo === 'Equipe') return `EQ-???-${proximo}`;
+  // Equipe: gera EQ-OBR-NN como padrão — gestor edita a sigla conforme especialidade
+  if(tipo === 'Equipe') return `EQ-OBR-${proximo}`;
   return `${prefixo}-${proximo}`;
 }
 
-function sugerirCodigoFornecedor(){
-  const tipo = document.getElementById('mfn-tipo')?.value || 'Equipe';
-  const sugestao = proximoCodigo(tipo);
-  const hint = document.getElementById('mfn-cod-hint');
-  const input = document.getElementById('mfn-cod');
-  if(hint) hint.textContent = sugestao;
-  if(input && !input.value) input.value = sugestao;
+// Gera e aplica automaticamente o próximo código disponível para o tipo selecionado
+function gerarCodigoFornecedor(){
+  const tipoEl = document.getElementById('mfn-tipo');
+  const input  = document.getElementById('mfn-cod');
+  if(!tipoEl || !input) return;
+
+  const tipo = tipoEl.value;
+  let codigo;
+  try {
+    codigo = proximoCodigo(tipo);
+  } catch(e) {
+    // Fallback seguro se state.equipes não estiver disponível
+    const prefixosFallback = { Equipe:'EQ-OBR', Fornecedor:'FOR-MAT', Consultor:'FOR-CON', Especializado:'FOR-ESP' };
+    codigo = (prefixosFallback[tipo] || 'FOR-MAT') + '-01';
+  }
+  input.value = codigo;
+
+  // Equipe: campo editável para ajustar a sigla de especialidade (EQ-PIN, EQ-ELE…)
+  // Outros tipos: readonly — código totalmente automático
+  if(tipo === 'Equipe'){
+    input.removeAttribute('readonly');
+    input.style.background = '';
+    input.style.color      = '';
+    input.style.cursor     = '';
+    input.title = 'Para equipes, ajuste a sigla da especialidade (ex: EQ-ELE-01, EQ-PIN-02)';
+    input.placeholder = 'EQ-OBR-01';
+  } else {
+    input.setAttribute('readonly', '');
+    input.style.background = 'var(--gray-soft)';
+    input.style.color      = 'var(--muted)';
+    input.style.cursor     = 'default';
+    input.title = 'Gerado automaticamente com base no tipo';
+  }
 }
+
+// Mantido para compatibilidade com chamadas legadas em outros módulos
+function sugerirCodigoFornecedor(){ gerarCodigoFornecedor(); }
 
 // _pagIdx guarda qual pagamento disparou o modal
 let _mfnPagIdx = -1;
@@ -12231,33 +12455,52 @@ function verificarFornecedorNovo(pagIdx, nome){
 function abrirModalFornecedorNovo(nome, pagIdx){
   _mfnPagIdx = pagIdx !== undefined ? pagIdx : -1;
   _mfnNomeOriginal = nome || '';
-  
+
+  // Recuperar dados do fornecedor salvos pela IA (se existirem e o nome bater)
+  const nfData = window._nfFornecedorData || {};
+  const nomeRef = (nfData.nome || '').toLowerCase();
+  const nomeArg = (nome || '').toLowerCase();
+  const usarNfData = nomeRef && (nomeRef.includes(nomeArg) || nomeArg.includes(nomeRef));
+
   // Pré-preencher nome
   const nomeEl = document.getElementById('mfn-nome');
   if(nomeEl) nomeEl.value = nome || '';
-  
-  // Limpar outros campos
-  ['mfn-cod','mfn-especialidade','mfn-responsavel','mfn-cnpj',
-   'mfn-telefone','mfn-email','mfn-pix','mfn-banco','mfn-obs'].forEach(id => {
+
+  // Pré-preencher campos do fornecedor vindos do documento
+  const setMfn = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; else if(el) el.value = ''; };
+  setMfn('mfn-cnpj',      usarNfData ? nfData.cnpj     : '');
+  setMfn('mfn-telefone',  usarNfData ? nfData.telefone  : '');
+  setMfn('mfn-email',     usarNfData ? nfData.email     : '');
+  setMfn('mfn-pix',       usarNfData ? nfData.pix       : '');
+  setMfn('mfn-banco',     usarNfData ? nfData.banco     : '');
+
+  // Limpar campos que não vêm da IA
+  ['mfn-cod','mfn-especialidade','mfn-responsavel','mfn-obs'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
-  
-  // Resetar tipo e sugerir código
+
+  // Indicar visualmente quando campos foram pré-preenchidos pela IA
+  const camposPreenchidos = usarNfData && [nfData.cnpj,nfData.telefone,nfData.email,nfData.pix,nfData.banco].some(Boolean);
+  const statusEl = document.getElementById('mfn-api-status');
+  if(statusEl) statusEl.textContent = camposPreenchidos ? '🤖 Campos pré-preenchidos pelo documento' : '';
+
+  // Resetar tipo — gerarCodigoFornecedor é chamado APÓS display=flex (bug A: modal precisa estar visível)
   const tipoEl = document.getElementById('mfn-tipo');
   if(tipoEl) tipoEl.value = 'Equipe';
-  sugerirCodigoFornecedor();
-  
-  // Status
-  const statusEl = document.getElementById('mfn-api-status');
-  if(statusEl) statusEl.textContent = '';
-  
+
   document.getElementById('modal-fornecedor-novo').style.display = 'flex';
-  setTimeout(() => document.getElementById('mfn-nome')?.focus(), 100);
+
+  // setTimeout(0) garante que o browser renderizou o modal antes de escrever no campo
+  setTimeout(() => {
+    gerarCodigoFornecedor();
+    document.getElementById('mfn-nome')?.focus();
+  }, 0);
 }
 
 function fecharModalFornecedor(){
   document.getElementById('modal-fornecedor-novo').style.display = 'none';
+  window._pendingPag = null; // cancelamento limpa qualquer pagamento pendente
 }
 
 async function salvarFornecedorNovo(){
@@ -12279,11 +12522,6 @@ async function salvarFornecedorNovo(){
     toast('Código e Nome são obrigatórios', 'error');
     return;
   }
-  if(cod.includes('???')){
-    toast('Defina o código corretamente (substitua ???)', 'error');
-    document.getElementById('mfn-cod').focus();
-    return;
-  }
 
   // 1. Adicionar à obra localmente
   if(!state.equipes.find(e => e.cod === cod)){
@@ -12297,7 +12535,17 @@ async function salvarFornecedorNovo(){
     saveState();
   }
 
-  // 2. Atualizar o campo fornecedor no pagamento que disparou
+  // 2. Se havia um pagamento pendente aguardando cadastro de fornecedor → lançá-lo agora
+  if(window._pendingPag){
+    const pag = window._pendingPag;
+    window._pendingPag = null;
+    pag.fornecedor = nome; // usar o nome exato cadastrado
+    _pushPagamento(pag);
+    fecharModalFornecedor();
+    return; // toast de pagamento já disparado por _pushPagamento
+  }
+
+  // 3. Atualizar o campo fornecedor no pagamento que disparou o modal (fluxo manual)
   if(_mfnPagIdx >= 0 && state.pagamentos[_mfnPagIdx]){
     state.pagamentos[_mfnPagIdx].fornecedor = nome;
     renderPagamentos();

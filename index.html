@@ -2948,6 +2948,43 @@ body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!import
         <div class="pia-card-result" id="pia-res-decisoes"></div>
       </div>
 
+      <!-- 📋 PLANEJAMENTO SEMANAL — KANBAN -->
+      <div style="grid-column:1/-1;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-top:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px">📋 Planejamento Semanal</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="planToggleFilter('pendente')" id="plan-f-pendente" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;font-size:10px">Pendente</button>
+            <button class="btn btn-sm" onclick="planToggleFilter('concluida')" id="plan-f-concluida" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;font-size:10px">Concluída</button>
+            <button class="btn btn-sm" onclick="planToggleFilter('cancelada')" id="plan-f-cancelada" style="background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;font-size:10px">Cancelada</button>
+          </div>
+        </div>
+
+        <!-- Objetivo da semana -->
+        <div style="margin-bottom:14px">
+          <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">🎯 Objetivo da semana — o que o gestor quer alcançar</label>
+          <textarea id="plan-objetivo" rows="2" placeholder="Ex: Concluir toda a infraestrutura do Salão 1, liberar para pintura. Iniciar demolições do Salão 2..." style="width:100%;font-size:12px;padding:10px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--ink);resize:vertical" oninput="planSalvarObjetivo()"></textarea>
+        </div>
+
+        <!-- Botão gerar com IA -->
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn" onclick="planGerarIA()" id="plan-btn-gerar" style="background:var(--primary);color:#fff;padding:10px 20px;font-size:12px;font-weight:700;flex:1">✦ Gerar Planejamento com IA</button>
+          <button class="btn btn-outline btn-sm" onclick="planAddManual()" style="font-size:11px">+ Tarefa manual</button>
+        </div>
+        <div id="plan-loading" style="display:none;text-align:center;padding:12px;color:var(--muted);font-size:12px"><div class="pia-spinner" style="display:inline-block;margin-right:8px"></div>Gerando planejamento...</div>
+
+        <!-- Kanban board -->
+        <div id="plan-kanban" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;min-width:0">
+        </div>
+
+        <!-- Resultado IA raw (colapsável) -->
+        <div id="plan-ia-raw" style="display:none;margin-top:12px">
+          <details>
+            <summary style="font-size:10px;color:var(--muted);cursor:pointer">Ver análise completa da IA</summary>
+            <div id="plan-ia-text" style="font-size:11px;color:var(--muted);padding:8px;background:var(--bg);border-radius:var(--radius);margin-top:4px;white-space:pre-wrap"></div>
+          </details>
+        </div>
+      </div>
+
     </div><!-- /pia-grid -->
 
     <!-- Legacy result container (mantido para compatibilidade) -->
@@ -2971,6 +3008,11 @@ body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!import
     <input type="file" id="foto-input-galeria" accept="image/*" multiple style="display:none" onchange="handleFotoInput(this)">
 
     <!-- dois botões + drop zone -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">📅 Data da foto</label>
+      <input type="date" id="foto-data-selecionada" style="flex:1;font-family:var(--font-mono);font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--ink)">
+      <button onclick="document.getElementById('foto-data-selecionada').valueAsDate=new Date()" style="font-size:10px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;color:var(--muted)">Hoje</button>
+    </div>
     <div id="foto-drop" ondragover="event.preventDefault();this.classList.add('foto-drag-active')" ondragleave="this.classList.remove('foto-drag-active')" ondrop="handleFotoDrop(event)"
       style="border:2px dashed var(--border);border-radius:var(--radius);padding:14px 12px;transition:border-color .2s,background .2s">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -3703,6 +3745,9 @@ function migrateState(s){
   s.config.escopo_resumo = s.config.escopo_resumo || '';
   s.config.num_medicoes = s.config.num_medicoes || s.config.medicoes || 4;
   if(!Array.isArray(s.whatsapp_drafts)) s.whatsapp_drafts = [];
+  if(!s.planejamento) s.planejamento = { objetivo:'', tarefas:[] };
+  if(!s.presenca_historico) s.presenca_historico = {};
+  if(!s.diario_historico) s.diario_historico = {};
   return s;
 }
 
@@ -3730,6 +3775,9 @@ function sanitizeState(s){
   if(typeof s.notas === 'string')  s.notas      = [];
   if(!s.config)                    s.config     = {};
   if(!s.diario)                    s.diario     = {};
+  if(!s.planejamento)              s.planejamento = { objetivo:'', tarefas:[] };
+  if(!s.presenca_historico)        s.presenca_historico = {};
+  if(!s.diario_historico)          s.diario_historico = {};
   return s;
 }
 
@@ -4202,11 +4250,10 @@ function loadState(key){
       state = migrateState(saved);
       sanitizeState(state);
       restoreUI();
-      // Checar nuvem em background — atualiza se tiver dados mais novos
       sbLoadBackground(key.replace('cockpit_',''));
       return true;
     }
-  } catch(e){}
+  } catch(e){ console.error('loadState ERRO:', e.message, e.stack); toast('Erro ao carregar: '+e.message,'error'); }
   return false;
 }
 
@@ -4367,6 +4414,21 @@ function saveConfig(){
   // Save empresa name globally for obra selector
   if(state.config.empresa) localStorage.setItem('mdo_empresa_name', state.config.empresa);
   saveState();
+}
+
+function renderAll(){
+  try{ renderServicos(); }catch(e){}
+  try{ renderEquipes(); }catch(e){}
+  try{ renderPagamentos(); }catch(e){}
+  try{ renderFotos(); }catch(e){}
+  try{ renderPendencias(); }catch(e){}
+  try{ renderMateriais(); }catch(e){}
+  try{ renderNotas(); }catch(e){}
+  try{ renderCronograma(); }catch(e){}
+  try{ updateTopbar(); }catch(e){}
+  try{ initDiario(); }catch(e){}
+  try{ renderDrawer(); }catch(e){}
+  try{ if(typeof atualizarBadgesAbas==='function') atualizarBadgesAbas(); }catch(e){}
 }
 
 function updateTopbar(){
@@ -5271,12 +5333,13 @@ function _renderOrcamentoView(lista, el){
 }
 
 function renderOrcPainel(){
-  const total   = state.config.valor_contrato || 0;
   const srvs    = state.servicos || [];
   const aditivos = srvs.filter(s=>s.is_aditivo);
   const valAdit  = aditivos.reduce(function(a,s){ return a + (parseFloat(s.valor)||0); }, 0);
+  const somaSrvs = srvs.reduce(function(a,s){ return a + (parseFloat(s.valor)||0); }, 0);
+  const total   = Math.max(parseFloat(state.config.valor_contrato)||0, somaSrvs);
   const executado = srvs.reduce(function(a,s){ return a + (parseFloat(s.valor)||0) * (s.pct_atual||0) / 100; }, 0);
-  const saldo   = srvs.reduce(function(a,s){ return a + (parseFloat(s.valor)||0) * (1 - (s.pct_atual||0)/100); }, 0);
+  const saldo   = total - executado;
   const totalComAdit = total + valAdit;
   const pct = totalComAdit > 0 ? Math.min(executado / totalComAdit * 100, 100) : 0;
 
@@ -5727,7 +5790,14 @@ function renderGT(){
       if(isOn) bg = cor;
 
       var etapaHtml = '';
-      if(etapaOn) etapaHtml = '<div style="position:absolute;bottom:1px;left:1px;right:1px;height:5px;background:rgba(201,168,76,.8);border-radius:2px"></div>';
+      if(etapaOn && !isOn) {
+        // Etapa sem barra principal — mostrar como bloco completo com cor levemente diferente
+        bg = cor; 
+        etapaHtml = '<div style="position:absolute;inset:1px;background:'+cor+';opacity:.45;border-radius:2px"></div>';
+      } else if(etapaOn && isOn) {
+        // Etapa + barra principal sobrepostas — indicador sutil no fundo
+        etapaHtml = '<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.5);border-radius:0 0 2px 2px"></div>';
+      }
 
       // Determine current etapa for onclick
       var clickEtapa = 0;
@@ -6465,7 +6535,7 @@ function renderDrawer(){
   const totalSrv = srvs.length;
   const concluidos = srvs.filter(s=>s.status_atual==='CONCLUÍDO').length;
   const emAnd = srvs.filter(s=>s.status_atual==='EM ANDAMENTO');
-  const aExec = srvs.filter(s=>s.status_atual==='A EXECUTAR').length;
+  const aExec = srvs.filter(s=>(s.pct_atual||0)===0).length;
   const pausados = srvs.filter(s=>s.status_atual==='PAUSADO'||s.status_atual==='AGUARDANDO PROJETO');
   const totalVal = srvs.reduce((a,s)=>a+(s.valor||0),0);
   let pct = 0;
@@ -6870,18 +6940,18 @@ async function processarFotoComUpload(file, fotoIndex){
   const compressed = await compressImage(file, 1200, 0.75);
 
   // 2. Add to state immediately with base64 (for instant preview)
-  const _diaDatas = getDiasData(diarioSemanaOffset || 0);
-  const _diaSel = diarioDiaSelecionado || getDiaAtualSigla();
-  const _dataDodia = _diaDatas[_diaSel] || today();
+  var _fotoDateEl = document.getElementById('foto-data-selecionada');
+  var _fotoDateVal = _fotoDateEl && _fotoDateEl.value ? _fotoDateEl.value : '';
+  var _dataFoto = _fotoDateVal ? _fotoDateVal.split('-').reverse().join('/') : today();
   const foto = {
     legenda: '',
     ambiente: '',
-    data: today(),
-    titulo_rel: _dataDodia,
-    src: compressed,       // base64 for now
-    url: '',               // cloud URL (when uploaded)
-    thumb: '',             // cloud thumbnail
-    cloud: false           // flag
+    data: _dataFoto,
+    titulo_rel: _dataFoto,
+    src: compressed,
+    url: '',
+    thumb: '',
+    cloud: false
   };
   state.fotos.push(foto);
   const idx = state.fotos.length - 1;
@@ -6971,9 +7041,20 @@ function _renderHeatmapPresenca(){
     return '<th style="padding:2px 1px;text-align:center;min-width:26px;font-size:7px;font-weight:600;color:'+(isToday?'#1D4ED8':isWe?'#ccc':'var(--muted)')+';border-bottom:1.5px solid '+(isToday?'#1D4ED8':'var(--border)')+';background:'+(isToday?'rgba(59,130,246,.08)':isWe?'#fafafa':'#fff')+'">'+dowL[d.getDay()]+'<br>'+d.getDate()+'</th>';
   }).join('');
 
+  // Build map of scheduled days per equipe from cronograma
+  var agendaMap = {}; // { 'EQ-OBR-01': Set('2026-03-09', ...) }
+  (state.servicos||[]).forEach(function(s){
+    var eqCod = s.equipe||s.equipe_cod||'';
+    if(!eqCod) return;
+    if(!agendaMap[eqCod]) agendaMap[eqCod] = {};
+    (s.dias_marcados||[]).forEach(function(dm){ agendaMap[eqCod][dm] = true; });
+    (s.etapas||[]).forEach(function(et){ (et.dias_marcados||[]).forEach(function(dm2){ agendaMap[eqCod][dm2] = true; }); });
+  });
+
   // Rows
   var trs = state.equipes.map(function(eq){
     var totalPres = 0;
+    var scheduled = agendaMap[eq.cod] || {};
     var tds = allDays.map(function(d){
       var iso = d.toISOString().slice(0,10);
       var dayPres = presMap[iso];
@@ -6983,12 +7064,14 @@ function _renderHeatmapPresenca(){
         if(raw===true||raw==='sim'){ v='sim'; totalPres++; }
         else if(raw===false||raw==='nao') v='nao';
       }
+      var isScheduled = !!scheduled[iso];
       var isWe = d.getDay()===0||d.getDay()===6;
       var bg, clr;
       if(v==='sim'){ bg='#065F46'; clr='#fff'; }
       else if(v==='nao'){ bg='var(--danger)'; clr='#fff'; }
+      else if(isScheduled){ bg='#3B82F6'; clr='transparent'; } // azul = agendado
       else { bg=isWe?'#f5f5f5':'var(--border)'; clr='transparent'; }
-      return '<td style="padding:1px;text-align:center"><div style="width:22px;height:16px;border-radius:3px;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:'+clr+';background:'+bg+';'+(v==='nd'?'opacity:.2':'')+'"></div></td>';
+      return '<td style="padding:1px;text-align:center"><div style="width:22px;height:16px;border-radius:3px;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:'+clr+';background:'+bg+';'+(v==='nd'&&!isScheduled?'opacity:.2':'')+'"></div></td>';
     }).join('');
     var nomeLabel = eq.nome||eq.responsavel||eq.cod;
     return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:4px 6px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:2;border-right:2px solid var(--border)"><div style="font-size:10px;font-weight:600;color:var(--ink,#111)">'+esc(nomeLabel)+'</div><div style="font-size:8px;color:var(--muted);font-family:var(--font-mono)">'+esc(eq.cod)+'</div></td>'+tds+'<td style="padding:3px 6px;text-align:center;font-family:var(--font-mono);font-size:10px;font-weight:700;color:'+(totalPres>0?'#065F46':'var(--muted)')+';position:sticky;right:0;background:var(--surface);z-index:2;border-left:2px solid var(--border)">'+totalPres+'d</td></tr>';
@@ -7008,6 +7091,7 @@ function _renderHeatmapPresenca(){
     + '<div style="display:flex;gap:12px;margin-top:8px;font-size:9px;color:var(--muted)">'
     + '<span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:8px;border-radius:2px;background:#065F46"></span>Presente</span>'
     + '<span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:8px;border-radius:2px;background:var(--danger)"></span>Ausente</span>'
+    + '<span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:8px;border-radius:2px;background:#3B82F6"></span>Agendado</span>'
     + '<span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:8px;border-radius:2px;background:var(--border);opacity:.3"></span>Não marcado</span>'
     + '</div></div>';
 }
@@ -7405,26 +7489,47 @@ function renderFotos(){
     ind.style.display = 'none';
   }
   // ─────────────────────────────────────────────────────────────────────────
-  el.innerHTML = state.fotos.map((f,i)=>{
-    const isCloud = f.cloud || (f.url && f.url.startsWith('http'));
-    const imgSrc = f.url || f.src || '';
-    return `
-    <div class="foto-thumb" id="foto-thumb-${i}">
-      <img src="${imgSrc}" loading="lazy" alt="${esc(f.legenda||'Foto')}">
-      <button class="foto-thumb-remove" onclick="removeFoto(${i})">✕</button>
-      ${isCloud ? '<div class="foto-cloud-badge">☁ NUVEM</div>' : '<div class="foto-local-badge" title="Clique para enviar" onclick="retryUpload('+i+')" style="cursor:pointer">📱 LOCAL</div>'}
-      <div class="foto-thumb-info">
-        <input type="text" value="${esc(f.legenda||'')}" placeholder="Legenda..." onchange="updateFoto(${i},'legenda',this.value)" style="background:transparent;border:none;color:#fff;width:100%;font-size:11px;padding:0;outline:none">
-        <div style="display:flex;gap:4px;margin-top:3px;align-items:center">
-          <select onchange="updateFoto(${i},'ambiente',this.value)" style="background:rgba(0,0,0,.4);border:none;color:#fff;font-size:10px;padding:1px 3px;border-radius:3px;flex:1">
-            <option value="">Ambiente...</option>
-            ${setores.map(s=>`<option value="${s}"${f.ambiente===s?' selected':''}>${s}</option>`).join('')}
-          </select>
-          <span style="font-size:10px;opacity:.7">${f.data||''}</span>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+  // Sort fotos by date chronologically
+  var sortedFotos = state.fotos.map(function(f,i){ return {f:f,i:i}; });
+  sortedFotos.sort(function(a,b){
+    var da = (a.f.data||'').split('/').reverse().join('-');
+    var db = (b.f.data||'').split('/').reverse().join('-');
+    return da<db?-1:da>db?1:0;
+  });
+
+  // Group by date
+  var fotosByDate = {};
+  sortedFotos.forEach(function(item){
+    var key = item.f.data || 'Sem data';
+    if(!fotosByDate[key]) fotosByDate[key]=[];
+    fotosByDate[key].push(item);
+  });
+
+  var html = '';
+  Object.keys(fotosByDate).forEach(function(dateKey){
+    html += '<div style="font-size:11px;font-weight:700;color:var(--primary);margin:12px 0 6px;padding:4px 8px;background:var(--bg);border-radius:4px;display:inline-block">📅 '+dateKey+'</div>';
+    html += '<div class="foto-grid-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">';
+    fotosByDate[dateKey].forEach(function(item){
+      var f=item.f, i=item.i;
+      var isCloud = f.cloud || (f.url && f.url.startsWith('http'));
+      var imgSrc = f.url || f.src || '';
+      html += '<div class="foto-thumb" id="foto-thumb-'+i+'">'
+        +'<img src="'+imgSrc+'" loading="lazy" alt="'+esc(f.legenda||'Foto')+'">'
+        +'<button class="foto-thumb-remove" onclick="removeFoto('+i+')">✕</button>'
+        +(isCloud?'<div class="foto-cloud-badge">☁ NUVEM</div>':'<div class="foto-local-badge" title="Clique para enviar" onclick="retryUpload('+i+')" style="cursor:pointer">📱 LOCAL</div>')
+        +'<div class="foto-thumb-info">'
+        +'<input type="text" value="'+esc(f.legenda||'')+'" placeholder="Legenda..." onchange="updateFoto('+i+',\'legenda\',this.value)" style="background:transparent;border:none;color:#fff;width:100%;font-size:11px;padding:0;outline:none">'
+        +'<div style="display:flex;gap:4px;margin-top:3px;align-items:center">'
+        +'<select onchange="updateFoto('+i+',\'ambiente\',this.value)" style="background:rgba(0,0,0,.4);border:none;color:#fff;font-size:10px;padding:1px 3px;border-radius:3px;flex:1">'
+        +'<option value="">Ambiente...</option>'
+        +setores.map(function(s2){ return '<option value="'+s2+'"'+(f.ambiente===s2?' selected':'')+'>'+s2+'</option>'; }).join('')
+        +'</select>'
+        +'<span style="font-size:10px;opacity:.7">'+esc(f.data||'')+'</span>'
+        +'</div></div></div>';
+    });
+    html += '</div>';
+  });
+  el.innerHTML = html;
   let subtitle = `${state.fotos.length} foto${state.fotos.length!==1?'s':''}`;
   if(cloudCount>0) subtitle += ` · ${cloudCount} na nuvem`;
   if(localCount>0 && cloudCount>0) subtitle += ` · ${localCount} local`;
@@ -8205,9 +8310,9 @@ async function callClaude(opts){
     }
     throw new Error('Worker retornou HTTP ' + resp.status);
   } catch(workerErr){
-    if(workerErr.name === 'AbortError') throw new Error('Tempo limite excedido (45s). Verifique o Cloudflare Worker.');
-    console.warn('Worker falhou, tentando fallback:', workerErr.message);
-    throw workerErr; // Não tenta fallback — expõe o erro real
+    if(workerErr.name === 'AbortError') throw new Error('Tempo limite excedido (45s).');
+    console.warn('Worker falhou, tentando fallback Apps Script:', workerErr.message);
+    // Continua para fallback abaixo
   }
 
   // ── 2. Apps Script proxy (fallback) ─────────────────────────────────
@@ -10885,7 +10990,7 @@ body{font-family:'Barlow',sans-serif;background:#E2DFD9;color:var(--texto);font-
 .cab-bot{padding-top:12px}
 .marca{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--preto);letter-spacing:-1px;line-height:1}
 .marca span{font-weight:500}
-.cab-tipo{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--cinza);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.cab-tipo{font-family:'Barlow Condensed','IBM Plex Mono',monospace;font-size:14px;color:#fff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:800;padding:6px 14px;background:var(--preto,#111);border-radius:4px;display:inline-block}
 .cab-obra{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;color:var(--preto);line-height:1;letter-spacing:-.5px}
 .cab-end{font-size:11px;color:var(--cinza);margin-top:3px;line-height:1.5}
 .cab-div{background:var(--linha)}
@@ -11025,6 +11130,19 @@ body{font-family:'Barlow',sans-serif;background:#E2DFD9;color:var(--texto);font-
 }
 
 // ─── CABEÇALHO PADRÃO ──────────────────────────────
+function _statusBadge(s){
+  var pct = s.pct_atual||0;
+  if(pct>=100) return '<span class="bdg bg">Concluído</span>';
+  if(pct>0) return '<span class="bdg bb">Em andamento</span>';
+  return '<span class="bdg bc">A executar</span>';
+}
+function _statusText(s){
+  var pct = s.pct_atual||0;
+  if(pct>=100) return 'CONCLUÍDO';
+  if(pct>0) return 'EM ANDAMENTO';
+  return 'A EXECUTAR';
+}
+
 function buildBertiHeader(opts) {
   const {tipo, obra, end, campos} = opts;
   // campos: array de {l, v, s?} — label, value, sub
@@ -11144,8 +11262,12 @@ function abrirRelatorioGantt(){
   modal.id = 'modal-gantt-periodo';
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
   modal.innerHTML = '<div style="background:var(--surface,#fff);border-radius:12px;padding:20px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.4)">'
-    +'<div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--ink,#111)">📅 Período do Cronograma</div>'
-    +'<div style="font-size:12px;color:var(--muted,#666);margin-bottom:14px">Escolha o período para exportar no PDF. Para enviar ao cliente, use "Esta semana" ou "Próximas 2 semanas".</div>'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--ink,#111)">📅 Cronograma — Exportar PDF</div>'
+    +'<div style="font-size:12px;color:var(--muted,#666);margin-bottom:10px">Período e filtros para o relatório.</div>'
+    +'<div style="padding:10px;background:var(--bg,#f5f3ef);border-radius:8px;margin-bottom:14px">'
+    +'<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Filtrar Status</div>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:4px"><input type="checkbox" id="gantt-pdf-hide-concluido" style="accent-color:var(--primary)"> Ocultar serviços concluídos (focar no futuro)</label>'
+    +'</div>'
     +'<div style="display:flex;flex-direction:column;gap:8px">'
     +'<button onclick="_gerarGanttPDF(\'semana\')" class="btn" style="background:var(--primary,#0D2016);color:#fff;padding:12px;font-size:13px;font-weight:700;border:none;border-radius:8px;cursor:pointer">📋 Esta semana</button>'
     +'<button onclick="_gerarGanttPDF(\'2semanas\')" class="btn" style="background:var(--accent,#2E6645);color:#fff;padding:12px;font-size:13px;font-weight:700;border:none;border-radius:8px;cursor:pointer">📋 Próximas 2 semanas</button>'
@@ -11164,7 +11286,11 @@ function _gerarGanttPDF(modo){
   var c = state.config;
   var t = getRelTema();
   var p1 = t.p1, p2 = t.p2;
-  var srvs = state.servicos || [];
+  var hideConcluido = document.getElementById('gantt-pdf-hide-concluido') && document.getElementById('gantt-pdf-hide-concluido').checked;
+  var srvs = (state.servicos || []).filter(function(s){
+    if(hideConcluido && (s.pct_atual||0)>=100) return false;
+    return true;
+  });
 
   function _toD(s){ if(!s) return null; var d=new Date(s.includes('/')?s.split('/').reverse().join('-'):s); return isNaN(d)?null:d; }
 
@@ -11249,7 +11375,7 @@ function _gerarGanttPDF(modo){
     var isWeekend = d.getDay()===0 || d.getDay()===6;
     var bg = isToday ? p1 : isWeekend ? '#F3F4F6' : '#fff';
     var clr = isToday ? '#fff' : '#9CA3AF';
-    return '<th style="min-width:18px;max-width:18px;padding:1px;text-align:center;font-size:7px;font-weight:600;background:'+bg+';color:'+clr+';border-left:1px solid #EEE;line-height:1.2">'+dowLetras[d.getDay()]+'<br>'+d.getDate()+'</th>';
+    return '<th style="min-width:22px;max-width:22px;padding:1px;text-align:center;font-size:7px;font-weight:600;background:'+bg+';color:'+clr+';border-left:1px solid #EEE;line-height:1.2">'+dowLetras[d.getDay()]+'<br>'+d.getDate()+'</th>';
   }).join('');
 
   // Month header row
@@ -11435,7 +11561,7 @@ function _gerarRelSemanal(){
 
   const totalSrv = srvs.length;
   const concluidos = srvs.filter(s=>s.status_atual==='CONCLUÍDO').length;  const emAnd = srvs.filter(s=>s.status_atual==='EM ANDAMENTO').length;
-  const aExec = srvs.filter(s=>s.status_atual==='A EXECUTAR').length;
+  const aExec = srvs.filter(s=>(s.pct_atual||0)===0).length;
   const totalVal = srvs.reduce((a,s)=>a+(s.valor||0),0);
   let pctGeral = 0;
   if(totalVal>0) pctGeral = srvs.reduce((a,s)=>a+(s.pct_atual||0)*(s.valor||0),0)/totalVal;
@@ -11484,11 +11610,9 @@ function _gerarRelSemanal(){
   // Serviços semana rows
   const srvRows = srvsemana.length ? srvsemana.map(s=>{
     const delta = (s.pct_atual||0)-(s.pct_anterior||0);
-    const stAtual = s.status_atual==='CONCLUÍDO'?'<span class="bdg bg">Concluído</span>':
-                    s.status_atual==='EM ANDAMENTO'?'<span class="bdg bb">Em andamento</span>':
-                    '<span class="bdg bc">A executar</span>';
-    const stAnt  = s.status_anterior==='CONCLUÍDO'?'<span class="bdg bg">Concluído</span>':
-                    s.status_anterior==='EM ANDAMENTO'?'<span class="bdg bb">Em andamento</span>':
+    const stAtual = _statusBadge(s);
+    const stAnt  = (s.pct_anterior||0)>=100?'<span class="bdg bg">Concluído</span>':
+                    (s.pct_anterior||0)>0?'<span class="bdg bb">Em andamento</span>':
                     '<span class="bdg bc">A executar</span>';
     return `<tr>
       <td class="mono" style="font-size:8px;color:var(--cinza)">${esc2(s.cod||'')}</td>
@@ -11612,20 +11736,23 @@ function gerarRelatorioSemanalCliente(){
   else if(srvs.length>0) pctGeral = srvs.reduce((a,s)=>a+(s.pct_atual||0),0)/srvs.length;
   pctGeral = Math.round(pctGeral);
 
-  const emAnd = srvs.filter(s=>s.status_atual==='EM ANDAMENTO').length;
+  const emAnd = srvs.filter(s=>(s.pct_atual||0)>0&&(s.pct_atual||0)<100).length;
+  const concluidos = srvs.filter(s=>(s.pct_atual||0)>=100).length;
   const valContrato = c.valor_contrato || totalVal || 0;
   const totalPago = pags.filter(p=>p.tipo==='ENTRADA').reduce((a,p)=>a+(parseFloat(p.valor)||0),0);
   const emAberto = valContrato - totalPago;
   const semana = c.semana||1;
   const totalMed = c.medicoes||7;
 
-  // Serviços executados semana
-  const srvsem = srvs.filter(s=>(s.pct_atual||0)>(s.pct_anterior||0)||s.status_atual!==s.status_anterior);
+  // Serviços executados semana — status baseado no % real
+  const srvsem = srvs.filter(s=>(s.pct_atual||0)>(s.pct_anterior||0)||((s.pct_atual||0)>0));
   const srvRows = srvsem.length ? srvsem.map(s=>{
-    const st = s.status_atual==='CONCLUÍDO'?'<span class="bdg bg">Concluído</span>':
-               s.status_atual==='EM ANDAMENTO'?'<span class="bdg bb">Em andamento</span>':
-               '<span class="bdg bc">A executar</span>';
     const pct = s.pct_atual||0;
+    // Status recalculado pelo % — não confiar no status_atual que pode estar desatualizado
+    const stReal = pct >= 100 ? 'CONCLUÍDO' : pct > 0 ? 'EM ANDAMENTO' : 'A EXECUTAR';
+    const st = stReal==='CONCLUÍDO'?'<span class="bdg bg">Concluído</span>':
+               stReal==='EM ANDAMENTO'?'<span class="bdg bb">Em andamento</span>':
+               '<span class="bdg bc">A executar</span>';
     return `<tr>
       <td><div class="tnm">${esc2(s.descricao||'')}</div></td>
       <td><div class="tlc">${esc2(s.local||s.ambiente||'—')}</div></td>
@@ -11634,14 +11761,26 @@ function gerarRelatorioSemanalCliente(){
     </tr>`;
   }).join('') : `<tr><td colspan="4" style="color:var(--cinza);text-align:center;padding:16px">Nenhum serviço com avanço nesta semana</td></tr>`;
 
-  // Próxima semana — serviços programados
-  const proxSrvs = srvs.filter(s=>s.status_atual==='EM ANDAMENTO'||s.status_atual==='A EXECUTAR').slice(0,5);
-  const proxRows = proxSrvs.length ? proxSrvs.map((s,i)=>`
-    <div class="prox-r">
+  // Próxima semana — serviços programados com datas do cronograma
+  function _fmtCli(d){ if(!d) return '—'; var dt=new Date(d.includes('/')?d.split('/').reverse().join('-'):d); return isNaN(dt)?'—':String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0'); }
+  const proxSrvs = srvs.filter(s=>{
+    var pct = s.pct_atual||0;
+    return pct < 100 && (s.status_atual==='EM ANDAMENTO'||(s.pct_atual||0)===0||pct>0);
+  }).sort(function(a,b){
+    var da = (a.dias_marcados&&a.dias_marcados.length)?a.dias_marcados[0]:(a.data_inicio||'9999');
+    var db = (b.dias_marcados&&b.dias_marcados.length)?b.dias_marcados[0]:(b.data_inicio||'9999');
+    return da<db?-1:da>db?1:0;
+  }).slice(0,8);
+  const proxRows = proxSrvs.length ? proxSrvs.map((s,i)=>{
+    var dtIni = _fmtCli(s.data_inicio);
+    var dtFim = _fmtCli(s.data_fim);
+    var prazo = dtIni!=='—' ? (dtIni+(dtFim!=='—'&&dtFim!==dtIni?' a '+dtFim:'')) : 'A definir';
+    return `<div class="prox-r">
       <div class="prox-n">${String(i+1).padStart(2,'0')}</div>
       <div class="prox-txt">${esc2(s.descricao||'')}</div>
-      <div class="prox-val">${s.valor ? 'R$ '+fmtNum(s.valor*(1-(s.pct_atual||0)/100)) : 'A definir'}</div>
-    </div>`).join('') : '<div style="padding:14px;color:var(--cinza);font-size:12px">Nenhum serviço programado</div>';
+      <div class="prox-val" style="font-size:10px;min-width:90px;text-align:right">${prazo}</div>
+    </div>`;
+  }).join('') : '<div style="padding:14px;color:var(--cinza);font-size:12px">Nenhum serviço programado</div>';
 
   const proxTotal = proxSrvs.reduce((a,s)=>a+(s.valor||0)*(1-(s.pct_atual||0)/100),0);
 
@@ -11707,8 +11846,12 @@ ${cabHeader}
     <div class="ks-bar"><div class="ks-prog" style="width:${pctGeral}%"></div></div>
   </div>
   <div class="ks">
+    <div class="ks-v" style="color:#065F46">${concluidos}</div>
+    <div class="ks-l">Serviços Concluídos</div>
+  </div>
+  <div class="ks">
     <div class="ks-v" style="color:#1E3A8A">${emAnd}</div>
-    <div class="ks-l">Serviços em Andamento</div>
+    <div class="ks-l">Em Andamento</div>
   </div>
   <div class="ks">
     <div class="ks-v" style="font-size:26px;line-height:1.15">${esc2(c.data_fim||c.periodo_fim||'—')}</div>
@@ -11727,10 +11870,6 @@ ${cabHeader}
 
   <div class="sec"><span class="sec-n">03</span><span class="sec-t">Programado — Semana ${semana+1}</span></div>
   <div class="prox">${proxRows}</div>
-  <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--linha);border-top:2px solid var(--preto);background:var(--fundo)">
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:1px;color:var(--cinza)">Total previsto semana ${semana+1}</div>
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--preto)">R$ ${fmtNum(proxTotal)}</div>
-  </div>
 
   <div class="sec"><span class="sec-n">04</span><span class="sec-t">Registro Fotográfico</span></div>
   ${fotosHtml}
@@ -11786,8 +11925,8 @@ function abrirRelatorioOrcamento(){
       const items = catMap[cat];
       const catTotal = items.reduce((a,s)=>a+(s.valor||0),0);
       const catPct = catTotal > 0 ? Math.round(items.reduce((a,s)=>a+(s.pct_atual||0)*(s.valor||0),0)/catTotal) : 0;
-      const catConc = items.filter(s=>s.status_atual==='CONCLUÍDO').length;
-      const catAndamento = items.filter(s=>s.status_atual==='EM ANDAMENTO').length;
+      const catConc = items.filter(s=>(s.pct_atual||0)>=100).length;
+      const catAndamento = items.filter(s=>(s.pct_atual||0)>0&&(s.pct_atual||0)<100).length;
 
       // Category header row — inline bg on every TD to override nth-child(even)
       srvRows += `<tr style="background:var(--preto);page-break-inside:avoid">
@@ -11800,11 +11939,10 @@ function abrirRelatorioOrcamento(){
       // Service rows
       items.forEach(s => {
         const pct = s.pct_atual||0;
-        const st = s.status_atual==='CONCLUÍDO'?'<span class="bdg bg">Concluído</span>':
-                   s.status_atual==='EM ANDAMENTO'?'<span class="bdg bb">Em andamento</span>':
-                   '<span class="bdg bc">A executar</span>';
-        const nm = s.status_atual==='A EXECUTAR'?'color:var(--cinza)':'font-weight:700;color:var(--texto)';
-        const vl = s.status_atual==='A EXECUTAR'?'color:var(--cinza)':'font-weight:700;color:var(--texto)';
+        const st = _statusBadge(s);
+        const stText = _statusText(s);
+        const nm = stText==='A EXECUTAR'?'color:var(--cinza)':'font-weight:700;color:var(--texto)';
+        const vl = stText==='A EXECUTAR'?'color:var(--cinza)':'font-weight:700;color:var(--texto)';
         srvRows += `<tr>
           <td class="mono" style="font-size:8px;color:var(--cinza)">${esc2(s.cod||'')}</td>
           <td style="${nm}">${esc2(s.descricao||'')}</td>
@@ -11815,7 +11953,7 @@ function abrirRelatorioOrcamento(){
           <td style="text-align:right">
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px">
               <div style="width:40px;height:2px;background:var(--linha);overflow:hidden"><div style="width:${pct}%;height:100%;background:${pct>=100?'var(--ok)':'var(--preto)'}"></div></div>
-              <span class="mono" style="font-size:9px${s.status_atual==='A EXECUTAR'?';color:var(--cinza)':''}">${pct>0?pct+'%':'—'}</span>
+              <span class="mono" style="font-size:9px${stText==='A EXECUTAR'?';color:var(--cinza)':''}">${pct>0?pct+'%':'—'}</span>
             </div>
           </td>
           <td class="r mono" style="${vl}">R$ ${fmtNum(s.valor||0)}</td>
@@ -12770,7 +12908,7 @@ function _buildPortalCliente(){
   const totalSrv   = srvs.length;
   const concluidos = srvs.filter(s=>s.status_atual==='CONCLUÍDO').length;
   const emAnd      = srvs.filter(s=>s.status_atual==='EM ANDAMENTO').length;
-  const aExec      = srvs.filter(s=>s.status_atual==='A EXECUTAR').length;
+  const aExec      = srvs.filter(s=>(s.pct_atual||0)===0).length;
   const totalVal   = srvs.reduce((a,s)=>a+(s.valor||0),0);
   let pctGeral = 0;
   if(totalVal>0) pctGeral = srvs.reduce((a,s)=>a+(s.pct_atual||0)*(s.valor||0),0)/totalVal;
@@ -12792,7 +12930,7 @@ function _buildPortalCliente(){
   const srvsemana = srvs.filter(s=>(s.pct_atual||0)>(s.pct_anterior||0)||s.status_atual==='CONCLUÍDO');
   // Em execução
   const emExec = srvs.filter(s=>s.status_atual==='EM ANDAMENTO').slice(0,5);
-  const prox   = srvs.filter(s=>s.status_atual==='A EXECUTAR').slice(0,4);
+  const prox   = srvs.filter(s=>(s.pct_atual||0)===0).slice(0,4);
   // Fotos
   const fotosOk = fotos.filter(f=>f.url||f.src).slice(-6);
   // Links
@@ -14657,8 +14795,8 @@ function piaContexto() {
   const totalGasto= pags.filter(p=>p.tipo==='SAÍDA').reduce((a,p)=>a+(parseFloat(p.valor)||0),0);
   const totalRec  = pags.filter(p=>p.tipo==='ENTRADA').reduce((a,p)=>a+(parseFloat(p.valor)||0),0);
 
-  const srvCtx  = srvs.map(s=>`${s.cod||'?'} | ${s.descricao||s.nome} | ${s.categoria} | ${s.pct_atual||0}% | ${s.status_atual||'A EXECUTAR'} | R$${s.valor||0} | eq:${s.equipe||'—'}`).join('\n');
-  const eqCtx   = eqs.map(e=>`${e.nome||e.cod} | ${e.especialidade||e.funcao||'—'} | nota:${e.nota||'—'}`).join('\n');
+  const srvCtx  = srvs.map(s=>`${s.cod||'?'} | ${s.descricao||s.nome} | ${s.categoria} | ${s.pct_atual||0}% | ${s.status_atual||'A EXECUTAR'} | R$${s.valor||0} | eq:${s.equipe||'—'} | ini:${s.data_inicio||'—'} fim:${s.data_fim||'—'}`).join('\n');
+  const eqCtx   = eqs.map(e=>`${e.cod||'?'} | ${e.nome||'—'} | ${e.especialidade||e.funcao||'—'} | tel:${e.telefone||'—'} | nota:${e.nota||'—'}`).join('\n');
   const pagCtx  = pags.slice(0,20).map(p=>`[${p.tipo}] ${p.descricao||'—'} R$${p.valor||0} ${p.data||''}`).join('\n');
   const pendCtx = pend.filter(p=>p.status!=='RESOLVIDA').map(p=>`[${p.prioridade||'normal'}] ${p.descricao||p.titulo} resp:${p.responsavel||'—'} prazo:${p.prazo||'—'}`).join('\n')||'Nenhuma.';
 
@@ -14668,6 +14806,237 @@ function piaContexto() {
     narrativa: (state.narrativa||'').substring(0,600)||'Não informada.',
     pct, totalOrc, totalGasto, totalRec, srvs, pags, pend, c
   };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLANEJAMENTO SEMANAL — KANBAN
+// ═══════════════════════════════════════════════════════════════
+var _planFilters = { pendente: true, concluida: true, cancelada: true };
+
+function planInit(){
+  if(!state || !state.config) return; // não inicializar se state vazio
+  if(!state.planejamento) state.planejamento = { objetivo:'', tarefas:[] };
+  var obj = document.getElementById('plan-objetivo');
+  if(obj){
+    obj._planLoading = true;
+    obj.value = state.planejamento.objetivo || '';
+    setTimeout(function(){ obj._planLoading = false; }, 200);
+  }
+  planRender();
+}
+
+function planSalvarObjetivo(){
+  var obj = document.getElementById('plan-objetivo');
+  if(obj && obj._planLoading) return; // skip during restore
+  if(!state.planejamento) state.planejamento = { objetivo:'', tarefas:[] };
+  state.planejamento.objetivo = (obj||{}).value || '';
+  saveState();
+}
+
+function planToggleFilter(status){
+  _planFilters[status] = !_planFilters[status];
+  var btn = document.getElementById('plan-f-'+status);
+  if(btn) btn.style.opacity = _planFilters[status] ? '1' : '.3';
+  planRender();
+}
+
+function planAddManual(){
+  if(!state || !state.config) return;
+  if(!state.planejamento) state.planejamento = { objetivo:'', tarefas:[] };
+  var hoje = new Date();
+  var dow = hoje.getDay();
+  var dias = ['dom','seg','ter','qua','qui','sex','sab'];
+  state.planejamento.tarefas.push({
+    id: Date.now(),
+    dia: dias[dow] || 'seg',
+    hora: '08:00',
+    tipo: '🏗️ OBRA',
+    descricao: '',
+    para: '',
+    mensagem: '',
+    status: 'pendente',
+    concluida_em: '',
+    criado_por: 'manual'
+  });
+  saveState();
+  planRender();
+}
+
+function planUpdateTarefa(id, field, val){
+  if(!state.planejamento) return;
+  var t = state.planejamento.tarefas.find(function(x){ return x.id===id; });
+  if(!t) return;
+  t[field] = val;
+  if(field==='status' && val==='concluida'){
+    t.concluida_em = new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  }
+  saveState();
+  planRender();
+}
+
+function planRemoverTarefa(id){
+  if(!state.planejamento) return;
+  state.planejamento.tarefas = state.planejamento.tarefas.filter(function(x){ return x.id!==id; });
+  saveState();
+  planRender();
+}
+
+function planRender(){
+  var kb = document.getElementById('plan-kanban');
+  if(!kb) return;
+  if(!state || !state.config) return;
+  if(!state.planejamento) state.planejamento = { objetivo:'', tarefas:[] };
+  var tarefas = state.planejamento.tarefas || [];
+  var diasOrdem = ['seg','ter','qua','qui','sex','sab','dom'];
+  var diasLabel = {seg:'SEG',ter:'TER',qua:'QUA',qui:'QUI',sex:'SEX',sab:'SÁB',dom:'DOM'};
+  var datas = getDiasData(0);
+  var hojeSigla = getDiaAtualSigla();
+
+  var tipoColors = {'📱 WHATSAPP':'#25D366','🏗️ OBRA':'#D97706','📞 TELEFONE':'#3B82F6','💻 ESCRITÓRIO':'#6B7280'};
+  var stColors = {pendente:'#FEF3C7',concluida:'#D1FAE5',cancelada:'#FEE2E2'};
+
+  kb.innerHTML = diasOrdem.map(function(dia){
+    var isHoje = dia === hojeSigla;
+    var dtLabel = datas[dia] || '';
+    var diaTarefas = tarefas.filter(function(t){
+      return t.dia===dia && _planFilters[t.status||'pendente'];
+    });
+    diaTarefas.sort(function(a,b){ return (a.hora||'').localeCompare(b.hora||''); });
+
+    var cards = diaTarefas.map(function(t){
+      var bgTipo = tipoColors[t.tipo] || '#6B7280';
+      var bgSt = stColors[t.status||'pendente'] || '#fff';
+      var isDone = t.status==='concluida';
+      return '<div style="background:'+bgSt+';border:1px solid var(--border);border-left:3px solid '+bgTipo+';border-radius:6px;padding:8px;margin-bottom:6px;font-size:10px;'+(isDone?'opacity:.6':'')+'">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+        +'<span style="font-weight:700;font-family:var(--font-mono);font-size:9px;color:'+bgTipo+'">'+esc(t.hora||'')+' '+esc(t.tipo||'')+'</span>'
+        +'<button onclick="planRemoverTarefa('+t.id+')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--muted);padding:0">✕</button>'
+        +'</div>'
+        +'<textarea onchange="planUpdateTarefa('+t.id+',\'descricao\',this.value)" style="width:100%;font-size:10px;border:none;background:transparent;resize:none;padding:0;color:var(--ink);'+(isDone?'text-decoration:line-through':'')+'\" rows="2">'+esc(t.descricao||'')+'</textarea>'
+        +(t.para?'<div style="font-size:9px;color:var(--muted);margin-top:2px">→ '+esc(t.para)+'</div>':'')
+        +(t.mensagem?'<div onclick="navigator.clipboard.writeText(this.innerText);toast(\'📋 Copiado!\',\'success\')" style="background:#E8F5E9;border-radius:4px;padding:4px 6px;margin-top:4px;font-size:9px;color:#1B5E20;cursor:pointer" title="Clique para copiar">'+esc(t.mensagem)+'</div>':'')
+        +'<div style="display:flex;gap:4px;margin-top:6px">'
+        +'<select onchange="planUpdateTarefa('+t.id+',\'status\',this.value)" style="font-size:9px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);flex:1">'
+        +'<option value="pendente"'+(t.status==='pendente'?' selected':'')+'>⏳ Pendente</option>'
+        +'<option value="concluida"'+(t.status==='concluida'?' selected':'')+'>✅ Concluída</option>'
+        +'<option value="cancelada"'+(t.status==='cancelada'?' selected':'')+'>❌ Cancelada</option>'
+        +'</select>'
+        +'<select onchange="planUpdateTarefa('+t.id+',\'dia\',this.value)" style="font-size:9px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface)">'
+        +diasOrdem.map(function(d2){ return '<option value="'+d2+'"'+(t.dia===d2?' selected':'')+'>'+diasLabel[d2]+'</option>'; }).join('')
+        +'</select>'
+        +'</div>'
+        +(isDone&&t.concluida_em?'<div style="font-size:8px;color:var(--muted);margin-top:3px;font-family:var(--font-mono)">✓ '+esc(t.concluida_em)+'</div>':'')
+        +'</div>';
+    }).join('');
+
+    return '<div style="min-width:120px">'
+      +'<div style="text-align:center;padding:6px;background:'+(isHoje?'var(--primary)':'var(--bg)')+';color:'+(isHoje?'#fff':'var(--ink)')+';border-radius:6px 6px 0 0;font-size:11px;font-weight:800">'
+      +diasLabel[dia]+'<div style="font-size:9px;font-weight:400;opacity:.7">'+dtLabel+'</div></div>'
+      +'<div style="min-height:80px;padding:6px;background:var(--bg);border-radius:0 0 6px 6px;border:1px solid var(--border);border-top:none">'
+      +cards
+      +'<button onclick="planAddTarefa(\''+dia+'\')" style="width:100%;padding:4px;font-size:9px;color:var(--muted);background:transparent;border:1px dashed var(--border);border-radius:4px;cursor:pointer;margin-top:4px">+</button>'
+      +'</div></div>';
+  }).join('');
+}
+
+function planAddTarefa(dia){
+  if(!state.planejamento) state.planejamento = { objetivo:'', tarefas:[] };
+  state.planejamento.tarefas.push({
+    id: Date.now(),
+    dia: dia,
+    hora: '08:00',
+    tipo: '🏗️ OBRA',
+    descricao: '',
+    para: '',
+    mensagem: '',
+    status: 'pendente',
+    concluida_em: '',
+    criado_por: 'manual'
+  });
+  saveState();
+  planRender();
+}
+
+async function planGerarIA(){
+  var btn = document.getElementById('plan-btn-gerar');
+  var load = document.getElementById('plan-loading');
+  if(btn) btn.disabled = true;
+  if(load) load.style.display = 'block';
+
+  try {
+    var ctx = piaContexto();
+    var objetivo = (document.getElementById('plan-objetivo')||{}).value || 'Avançar ao máximo nos serviços programados';
+    var hoje = new Date();
+    var diaStr = hoje.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+    var iso = hoje.toISOString().slice(0,10);
+    var datas = getDiasData(0);
+
+    // Montar serviços por dia da semana
+    var diasOrdem = ['seg','ter','qua','qui','sex','sab','dom'];
+    var srvPorDia = {};
+    diasOrdem.forEach(function(d){
+      var dd = datas[d]; if(!dd) return;
+      var pp = dd.split('/');
+      if(pp.length!==2) return;
+      var isoD = hoje.getFullYear()+'-'+pp[1]+'-'+pp[0];
+      srvPorDia[d] = (state.servicos||[]).filter(function(s){
+        return (s.dias_marcados||[]).indexOf(isoD)>=0;
+      }).map(function(s){ return s.cod+' '+s.descricao+' (eq:'+s.equipe+' '+(s.pct_atual||0)+'%)'; });
+    });
+    var srvDiaCtx = diasOrdem.map(function(d){ return d.toUpperCase()+' '+datas[d]+': '+(srvPorDia[d]&&srvPorDia[d].length?srvPorDia[d].join(', '):'nenhum agendado'); }).join('\n');
+
+    var raw = await callClaude({
+      system: 'Você é o gerente de produção da obra. Gere tarefas distribuídas para cada dia da semana no formato JSON.\n\nPara cada tarefa:\n- dia: seg/ter/qua/qui/sex/sab/dom\n- hora: HH:MM\n- tipo: "📱 WHATSAPP" ou "🏗️ OBRA" ou "📞 TELEFONE" ou "💻 ESCRITÓRIO"\n- descricao: ação concreta e específica\n- para: destinatário (nome + telefone se disponível)\n- mensagem: texto pronto para enviar (APENAS para tipo WHATSAPP, com saudação e contexto)\n\nResposta APENAS JSON válido sem texto antes ou depois:\n[{"dia":"seg","hora":"07:30","tipo":"📱 WHATSAPP","descricao":"...","para":"...","mensagem":"..."},...]',
+      messages: [{role:'user', content: 'HOJE: '+diaStr+'\nOBJETIVO DA SEMANA: '+objetivo+'\nENDEREÇO: '+(ctx.c.endereco_obra||'')+'\n'+ctx.resumo+'\nSERVIÇOS POR DIA:\n'+srvDiaCtx+'\nEQUIPES:\n'+ctx.eqCtx+'\nPENDÊNCIAS:\n'+ctx.pendCtx+'\nGere o JSON com as tarefas distribuídas pela semana.'}],
+      max_tokens: 1500
+    });
+
+    // Parse JSON
+    var rawClean = raw.replace(/```json|```/g,'').trim();
+    // Try to find JSON array
+    var match = rawClean.match(/\[[\s\S]*\]/);
+    if(match){
+      var tarefasIA = JSON.parse(match[0]);
+      if(!state.planejamento) state.planejamento = { objetivo:'', tarefas:[] };
+      // Manter tarefas manuais e concluídas, adicionar novas da IA
+      var mantidas = state.planejamento.tarefas.filter(function(t){ return t.status==='concluida' || t.criado_por==='manual'; });
+      var novas = tarefasIA.map(function(t,i){
+        return {
+          id: Date.now()+i,
+          dia: t.dia||'seg',
+          hora: t.hora||'08:00',
+          tipo: t.tipo||'🏗️ OBRA',
+          descricao: t.descricao||'',
+          para: t.para||'',
+          mensagem: t.mensagem||'',
+          status: 'pendente',
+          concluida_em: '',
+          criado_por: 'ia'
+        };
+      });
+      state.planejamento.tarefas = mantidas.concat(novas);
+      saveState();
+      planRender();
+      toast('✅ '+novas.length+' tarefas geradas para a semana','success');
+
+      // Mostrar texto raw
+      var rawEl = document.getElementById('plan-ia-raw');
+      var textEl = document.getElementById('plan-ia-text');
+      if(rawEl) rawEl.style.display = 'block';
+      if(textEl) textEl.textContent = raw;
+    } else {
+      toast('⚠️ IA retornou formato inesperado','warning');
+      var rawEl = document.getElementById('plan-ia-raw');
+      var textEl = document.getElementById('plan-ia-text');
+      if(rawEl) rawEl.style.display = 'block';
+      if(textEl) textEl.textContent = raw;
+    }
+  } catch(e){
+    toast('Erro: '+e.message,'error');
+  } finally {
+    if(btn){ btn.disabled = false; }
+    if(load) load.style.display = 'none';
+  }
 }
 
 // ── Gerar uma análise específica ────────────────────────────────
@@ -14750,6 +15119,46 @@ Máximo 5 decisões.
 Baseadas estritamente nos dados da obra — sem sugestões genéricas.
 Linguagem técnica e direta. Sem asteriscos, sem markdown.`,
     userFn: ctx => `${ctx.resumo}\nSERVIÇOS:\n${ctx.srvCtx||'—'}\nNARRATIVA:\n${ctx.narrativa}\nPENDÊNCIAS:\n${ctx.pendCtx}\nDê as recomendações estratégicas baseadas nos dados.`
+  },
+  planejamento: {
+    label: '📋 Plano do Dia',
+    system: `Você é o assistente pessoal do gestor de obra Evandro. Gere o planejamento do dia com MENSAGENS PRONTAS para enviar e ações concretas.
+
+CATEGORIAS DE AÇÃO (use EXATAMENTE estes prefixos):
+📱 WHATSAPP: — mensagens prontas para copiar e enviar. Inclua saudação, contexto e pedido claro.
+🏗️ OBRA: — ações presenciais na obra (vistoria, supervisão, recebimento de material)
+📞 TELEFONE: — ligações para fazer (administração do prédio, fornecedores, cliente)
+💻 ESCRITÓRIO: — ações administrativas (relatórios, pagamentos, documentação)
+
+FORMATO DE CADA ITEM:
+HORÁRIO: [07:30, 08:00, etc]
+TIPO: [📱 WHATSAPP / 🏗️ OBRA / 📞 TELEFONE / 💻 ESCRITÓRIO]
+PARA: [nome da pessoa/equipe + telefone se disponível]
+AÇÃO: [descrição curta do que fazer]
+MENSAGEM: [texto pronto para enviar — APENAS para itens tipo WHATSAPP]
+
+REGRAS PARA MENSAGENS WHATSAPP:
+- Tom profissional mas humano: "Bom dia [nome], tudo bem?"
+- Incluir contexto: "Sobre a obra da Churrascaria Badida no ParkShopping..."
+- Pedido claro: "Consegue confirmar presença amanhã às 8h?"
+- Informações práticas: endereço, horário de acesso, o que levar
+- Se houver restrição do local (shopping/condomínio), informar
+
+Comece às 07:30 e vá até 18:00.
+Use nomes reais das equipes e telefones dos dados.
+Máximo 10 ações.
+Sem asteriscos, sem markdown.`,
+    userFn: ctx => {
+      var hoje = new Date();
+      var diaStr = hoje.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+      var iso = hoje.toISOString().slice(0,10);
+      var srvHoje = (state.servicos||[]).filter(function(s){
+        return (s.dias_marcados||[]).indexOf(iso)>=0 || (s.etapas||[]).some(function(et){ return (et.dias_marcados||[]).indexOf(iso)>=0; });
+      });
+      var srvHojeCtx = srvHoje.length ? srvHoje.map(function(s){ return s.cod+' '+s.descricao+' (eq:'+s.equipe+' · '+(s.pct_atual||0)+'%)'; }).join('\n') : 'Nenhum serviço com dia marcado para hoje';
+      var endObra = ctx.c.endereco_obra||'';
+      return `HOJE: ${diaStr}\nENDEREÇO DA OBRA: ${endObra}\n${ctx.resumo}\nSERVIÇOS PROGRAMADOS HOJE:\n${srvHojeCtx}\nTODOS OS SERVIÇOS:\n${ctx.srvCtx||'—'}\nEQUIPES (com telefone):\n${ctx.eqCtx||'—'}\nPENDÊNCIAS:\n${ctx.pendCtx}\nGere o planejamento com mensagens prontas para enviar.`;
+    }
   }
 };
 
@@ -14794,6 +15203,47 @@ function piaRenderCard(tipo, raw) {
   for (const line of lines) {
     const l = line.trim();
     if (!l) { html += '<div style="height:6px"></div>'; continue; }
+
+    // Action type badges (planejamento do dia)
+    var typeColors = {'📱 WHATSAPP':'#25D366','🏗️ OBRA':'#D97706','📞 TELEFONE':'#3B82F6','💻 ESCRITÓRIO':'#6B7280'};
+    var matchedType = null;
+    Object.keys(typeColors).forEach(function(tk){ if(l.indexOf(tk)>=0 || l.indexOf(tk.replace('TIPO: ',''))>=0) matchedType=tk; });
+
+    // Time headers (07:30, 08:00, etc)
+    if (/^(HORÁRIO:\s*)?\d{1,2}:\d{2}/.test(l)) {
+      var timeMatch = l.match(/(\d{1,2}:\d{2})/);
+      html += `<div style="font-size:13px;font-weight:800;color:var(--primary);margin:12px 0 4px;padding-top:8px;border-top:2px solid var(--border)">${esc2(timeMatch[1])}</div>`;
+      continue;
+    }
+    // Type line with color badge
+    if (/^TIPO:\s*/.test(l)) {
+      var typeText = l.replace(/^TIPO:\s*/,'');
+      var bgc = '#6B7280';
+      Object.keys(typeColors).forEach(function(tk){ if(typeText.indexOf(tk)>=0) bgc=typeColors[tk]; });
+      html += `<div style="display:inline-block;padding:3px 10px;border-radius:4px;font-size:10px;font-weight:700;color:#fff;background:${bgc};margin:2px 0">${esc2(typeText)}</div>`;
+      continue;
+    }
+    // MENSAGEM: block — highlighted for copy
+    if (/^MENSAGEM:\s*/.test(l)) {
+      var msg = l.replace(/^MENSAGEM:\s*/,'');
+      html += `<div style="background:#E8F5E9;border-left:3px solid #25D366;padding:8px 12px;margin:4px 0;border-radius:0 6px 6px 0;font-size:12px;line-height:1.5;color:#1B5E20;cursor:pointer" onclick="navigator.clipboard.writeText(this.innerText);toast('📋 Mensagem copiada!','success')" title="Clique para copiar">${esc2(msg)}</div>`;
+      continue;
+    }
+    // PARA: line
+    if (/^PARA:\s*/.test(l)) {
+      html += `<div style="font-size:11px;color:var(--ink);padding:2px 0"><strong style="color:var(--muted);font-size:10px">PARA:</strong> ${esc2(l.replace(/^PARA:\s*/,''))}</div>`;
+      continue;
+    }
+    // AÇÃO: line
+    if (/^A[ÇC][ÃA]O:\s*/i.test(l)) {
+      html += `<div style="font-size:12px;font-weight:600;color:var(--ink);padding:2px 0">${esc2(l.replace(/^A[ÇC][ÃA]O:\s*/i,''))}</div>`;
+      continue;
+    }
+    // DETALHES: line
+    if (/^DETALHES:\s*/.test(l)) {
+      html += `<div style="font-size:11px;color:var(--muted);padding:2px 0;font-style:italic">${esc2(l.replace(/^DETALHES:\s*/,''))}</div>`;
+      continue;
+    }
 
     // Section headers: ALL CAPS with colon
     if (/^[A-ZÁÉÍÓÚÀÂÊÔÃÕÇ][A-ZÁÉÍÓÚÀÂÊÔÃÕÇ\s\/—\-]+:/.test(l) && l.length < 70) {
@@ -14950,6 +15400,7 @@ async function piaGerarTudo() {
 // (chamado no switchTab e ao abrir a seção)
 function piaInicializar() {
   piaAlertas();
+  planInit();
   // Restaurar cache se existir
   Object.keys(window._piaCache||{}).forEach(tipo => {
     if (window._piaCache[tipo]) {

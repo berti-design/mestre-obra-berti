@@ -1507,23 +1507,31 @@ body.tabs-active .sec{
 }
 body.tabs-active .sec + .sec{border-top:none}
 body.tabs-active .sec:first-child{border-top:1px solid var(--border)}
-/* sec-body: respeita sec-open — NÃO forçar display:block */
-body.tabs-active .sec-body{display:none}
-body.tabs-active .sec.sec-open .sec-body{display:block}
-/* header clicável dentro das abas */
-body.tabs-active .sec-header{
+/* Todas as abas exceto Registro: sec-body sempre visível, header não-colapsável */
+body.tabs-active .tab-panel:not(#tab-registro) .sec-body{display:block!important}
+body.tabs-active .tab-panel:not(#tab-registro) .sec-header{cursor:default;pointer-events:none}
+body.tabs-active .tab-panel:not(#tab-registro) .sec-chevron{display:none}
+/* Registro: mantém comportamento colapsável */
+body.tabs-active #tab-registro .sec-body{display:none}
+body.tabs-active #tab-registro .sec.sec-open .sec-body{display:block}
+body.tabs-active #tab-registro .sec-header{
   cursor:pointer;pointer-events:auto;
   background:var(--bg) !important;
   border-bottom:1px solid var(--border);
   padding:10px 16px;
 }
-body.tabs-active .sec-header:hover{background:#f5f3ef !important}
-/* chevron visível */
-body.tabs-active .sec-chevron{display:flex}
+body.tabs-active #tab-registro .sec-header:hover{background:#f5f3ef !important}
+body.tabs-active #tab-registro .sec-chevron{display:flex}
+/* header styling geral */
+body.tabs-active .sec-header{
+  background:var(--bg) !important;
+  border-bottom:1px solid var(--border);
+  padding:10px 16px;
+}
 body.tabs-active .sec-num{width:22px;height:22px;font-size:10px}
 body.tabs-active .sec-title{font-size:12px;text-transform:uppercase;letter-spacing:.5px}
 body.tabs-active main{padding:0 0 80px;max-width:100%}
-body.tabs-active .tab-panel.active{max-width:100%;margin:0 auto;padding:12px 12px 80px}
+body.tabs-active .tab-panel.active{max-width:900px;margin:0 auto;padding:12px 12px 80px}
 body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!important;padding:0 0 80px 0!important}
 
 /* Seção única na aba — sempre expandida, header não é clicável */
@@ -3134,7 +3142,17 @@ body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!import
       <div class="export-btns">
         <button class="btn btn-primary btn-sm" onclick="gerarJSON()">Gerar JSON</button>
         <button class="btn btn-copy btn-sm" onclick="copiar('export-json')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:middle;margin-right:4px"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copiar</button>
-        <button class="btn btn-outline btn-sm" onclick="exportarJsonBaseDados()" style="gap:6px">📦 Exportar Base de Dados</button>
+      </div>
+    </div>
+
+    <!-- JSON Base de Dados -->
+    <div class="export-area" style="margin-top:12px">
+      <div class="export-label">JSON Base de Dados (serviços + equipes — sem dados de execução)</div>
+      <textarea class="export-textarea" id="export-json-bd" readonly rows="6" placeholder="Clique em 'Gerar JSON BD'..."></textarea>
+      <div class="export-btns">
+        <button class="btn btn-sm" onclick="gerarJSONBaseDados()" style="background:var(--info);color:#fff;border:none">📋 Gerar JSON BD</button>
+        <button class="btn btn-copy btn-sm" onclick="copiar('export-json-bd')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:middle;margin-right:4px"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copiar</button>
+        <button class="btn btn-sm" onclick="downloadJSONBD()" style="background:var(--primary);color:#fff;border:none">⬇ Download</button>
       </div>
     </div>
 
@@ -7627,44 +7645,77 @@ function gerarJSON(){
   toggleSec('sec-export');
 }
 
-function exportarJsonBaseDados(){
+// ── JSON Base de Dados (serviços + equipes completos, sem dados de execução) ──
+function gerarJSONBaseDados(){
   var c = state.config;
-  var equipes = state.equipes || [];
-  var servicos = state.servicos || [];
-  var payload = {
-    gerado_em: new Date().toISOString(),
-    obra: c.obra || '',
-    versao: 'BD-v1',
-    fornecedores: equipes.map(function(e){
+  var json = {
+    meta: {
+      tipo: 'base_de_dados',
+      obra: c.obra||'',
+      cliente: c.cliente||'',
+      data_export: now(),
+      total_servicos: state.servicos.length,
+      total_equipes: state.equipes.length
+    },
+    servicos: state.servicos.map(function(s){
       return {
-        equipe_cod: e.cod||'', nome: e.nome||'', tipo: e.tipo||'Equipe',
-        especialidade: e.especialidade||'', cnpj_cpf: e.cnpj||'',
-        responsavel: e.responsavel||'', telefone: e.telefone||'',
-        email: e.email||'', banco: e.banco||'', pix: e.pix||'',
-        obs_obras: e.nota||'', avaliacao: '', ativo: 'SIM'
+        cod: s.cod,
+        cod_bd: s.cod_bd||'',
+        categoria: s.categoria||'',
+        descricao: s.descricao||'',
+        unidade: s.unidade||'vb',
+        quantidade: s.quantidade||1,
+        valor_unitario: s.valor_unitario||0,
+        valor: s.valor||0,
+        equipe: s.equipe||'',
+        equipe_nome: s.equipe_nome||'',
+        observacao: s.observacao||'',
+        data_inicio: s.data_inicio||'',
+        data_fim: s.data_fim||'',
+        dias_marcados: s.dias_marcados||[],
+        etapas: s.etapas||[],
+        prazo_dias: s.prazo_dias||0,
+        status_atual: s.status_atual||'A EXECUTAR',
+        pct_atual: s.pct_atual||0
       };
     }),
-    servicos: servicos.map(function(s){
+    equipes: state.equipes.map(function(e){
       return {
-        codigo: s.cod||'', categoria: s.categoria||'', descricao: s.descricao||'',
-        unidade: s.unidade||s.un||'vb', ref_rs: s.valor_unitario||s.valor||0,
-        equipe_cod: s.equipe_cod||s.equipe||'', observacoes: s.observacao||''
+        cod: e.cod||'',
+        nome: e.nome||'',
+        responsavel: e.responsavel||'',
+        telefone: e.telefone||'',
+        email: e.email||'',
+        banco: e.banco||'',
+        pix: e.pix||'',
+        especialidade: e.especialidade||'',
+        tipo: e.tipo||'',
+        cnpj: e.cnpj||''
       };
     })
   };
-  var blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  var nomeObra = (c.obra||'obra').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
-  a.href = url;
-  a.download = 'base-dados_'+nomeObra+'_'+new Date().toISOString().slice(0,10)+'.json';
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('\uD83D\uDCE6 JSON Base de Dados exportado','success');
+  var jsonStr = JSON.stringify(json, null, 2);
+  document.getElementById('export-json-bd').value = jsonStr;
+  toast('JSON da Base de Dados gerado — '+json.servicos.length+' serviços e '+json.equipes.length+' equipes', 'success');
 }
 
-function gerarPrompt(){
-  const c = state.config;
+function downloadJSONBD(){
+  var el = document.getElementById('export-json-bd');
+  if(!el||!el.value){ gerarJSONBaseDados(); }
+  var data = document.getElementById('export-json-bd').value;
+  if(!data){ toast('Gere o JSON primeiro','error'); return; }
+  var blob = new Blob([data], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var obraSlug = slugify(state.config.obra||'obra');
+  a.href = url;
+  a.download = 'BD_'+obraSlug+'_'+todayISO()+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Download iniciado','success');
+}
+
+function gerarPrompt(){  const c = state.config;
   const pi = c.periodo_ini ? fmtDate(c.periodo_ini) : '';
   const pf = c.periodo_fim ? fmtDate(c.periodo_fim) : '';
   const periodo = pi && pf ? `${pi} a ${pf}` : (pi||'');

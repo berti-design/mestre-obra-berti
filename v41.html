@@ -3956,21 +3956,23 @@ async function autoSyncNow(manual){
   if(!state?.config?.obra){ if(manual) toast('Nenhuma obra carregada','error'); return; }
 
   const obraKey = slugify(state.config.obra||'default');
-  const toSave  = JSON.parse(JSON.stringify(state));
-  toSave.fotos  = (toSave.fotos||[]).map(f=>({...f, src:undefined, b64:undefined}));
+  const toSave  = _prepararPayloadSync();
   const dataStr = JSON.stringify(toSave);
+  const kb = Math.round(dataStr.length / 1024);
 
   if(dataStr.length > 4*1024*1024){
-    if(manual) toast('Dados muito grandes para sync (>4MB)','error');
+    if(manual) toast('Dados muito grandes para sync (>4MB) · '+kb+'KB','error');
     return;
   }
 
   atualizarPill('syncing');
 
   try {
-    const r = await fetch(
-      `${url}?action=save&obra=${encodeURIComponent(obraKey)}&data=${encodeURIComponent(dataStr)}`
-    );
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: 'action=save&obra='+encodeURIComponent(obraKey)+'&data='+encodeURIComponent(dataStr)
+    });
     const d = await r.json();
     if(d.ok){
       _autoSyncPending = false;
@@ -3982,7 +3984,7 @@ async function autoSyncNow(manual){
       esconderBannerFalha();
       const lbl = document.getElementById('sync-last-time');
       if(lbl) lbl.textContent = 'Último backup: '+ts;
-      if(manual) toast(`✓ Backup realizado — ${ts}`, 'success');
+      if(manual) toast('☁️ Sincronizado · '+kb+'KB enviados', 'success');
     } else {
       throw new Error(d.msg || 'resposta inválida');
     }
@@ -3998,6 +4000,20 @@ async function autoSyncNow(manual){
       if(manual) toast('Falha no backup: '+e.message, 'error');
     }
   }
+}
+
+function _prepararPayloadSync(){
+  var s = JSON.parse(JSON.stringify(state));
+  // Remove base64 das fotos — manter apenas URLs da nuvem
+  if(s.fotos && s.fotos.length){
+    s.fotos = s.fotos.map(function(f){ return {url:f.url||'',thumb:f.thumb||'',data:f.data||'',legenda:f.legenda||'',ambiente:f.ambiente||'',cloud:f.cloud||false}; });
+  }
+  // Limitar notas e visitas
+  if(s.notas && s.notas.length > 20) s.notas = s.notas.slice(-20);
+  if(s.visitas && s.visitas.length > 10) s.visitas = s.visitas.slice(-10);
+  // Remover imagens pesadas da config
+  if(s.config){ s.config.logo_b64 = ''; s.config.capa_b64 = ''; }
+  return s;
 }
 
 // ── Pill de backup no topbar ─────────────────────────────────────────
@@ -6976,10 +6992,28 @@ function renderEquipes(){
     return;
   }
 
+  var iS = 'width:100%;font-size:11px;padding:4px 8px;color:var(--ink,#111);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:3px';
+
   el.innerHTML = _renderHeatmapPresenca() + '<div class="eq-grid">' +
     state.equipes.map(function(eq, i){
       var waLink = eq.telefone ? 'https://wa.me/' + eq.telefone.replace(/\D/g,'') : '';
-      return '<div class="eq-card-novo"><div class="eq-card-top"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div class="eq-card-cod">'+esc(eq.cod)+'</div><div class="eq-card-nome">'+esc(eq.nome)+'</div>'+(eq.responsavel?'<div class="eq-card-resp">'+esc(eq.responsavel)+'</div>':'')+(eq.especialidade?'<div class="eq-card-esp">'+esc(eq.especialidade)+'</div>':'')+'</div><button class="eq-card-btn-del" onclick="removerEquipe('+i+')" title="Remover">✕</button></div><div class="eq-card-contato">'+(eq.telefone?'<span>📞 '+esc(eq.telefone)+'</span>':'')+(eq.email?'<span>✉️ '+esc(eq.email)+'</span>':'')+(eq.pix?'<span>💳 PIX: '+esc(eq.pix)+'</span>':'')+'</div><div style="margin-top:8px"><input type="text" placeholder="Observação..." value="'+esc(eq.nota||'')+'" onchange="updateEqNota('+i+',this.value)" style="width:100%;font-size:11px;padding:5px 8px;color:var(--ink,#111);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius)"></div></div><div class="eq-card-actions">'+(waLink?'<a href="'+waLink+'" target="_blank" class="eq-card-btn wa">💬 WhatsApp</a>':'<span class="eq-card-btn" style="opacity:.3;cursor:default">💬 Sem tel</span>')+'<button class="eq-card-btn" onclick="copiarDadosEquipe('+i+')">📋 Copiar</button></div></div>';
+      return '<div class="eq-card-novo"><div class="eq-card-top">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
+        +'<div class="eq-card-cod">'+esc(eq.cod)+'</div>'
+        +'<button class="eq-card-btn-del" onclick="removerEquipe('+i+')" title="Remover">✕</button>'
+        +'</div>'
+        +'<input type="text" value="'+esc(eq.nome)+'" placeholder="Nome / Empresa" onchange="updateEqField('+i+',\x27nome\x27,this.value)" style="'+iS+';font-weight:700;font-size:12px">'
+        +'<input type="text" value="'+esc(eq.responsavel||'')+'" placeholder="Responsável" onchange="updateEqField('+i+',\x27responsavel\x27,this.value)" style="'+iS+'">'
+        +'<input type="text" value="'+esc(eq.especialidade||'')+'" placeholder="Especialidade" onchange="updateEqField('+i+',\x27especialidade\x27,this.value)" style="'+iS+';font-style:italic;font-size:10px">'
+        +'<input type="tel" value="'+esc(eq.telefone||'')+'" placeholder="Telefone / WhatsApp" onchange="updateEqField('+i+',\x27telefone\x27,this.value)" style="'+iS+'">'
+        +'<input type="email" value="'+esc(eq.email||'')+'" placeholder="E-mail" onchange="updateEqField('+i+',\x27email\x27,this.value)" style="'+iS+'">'
+        +'<input type="text" value="'+esc(eq.pix||'')+'" placeholder="Chave PIX" onchange="updateEqField('+i+',\x27pix\x27,this.value)" style="'+iS+';font-family:var(--font-mono);font-size:10px">'
+        +'<input type="text" value="'+esc(eq.nota||'')+'" placeholder="Observação..." onchange="updateEqNota('+i+',this.value)" style="'+iS+'">'
+        +'</div>'
+        +'<div class="eq-card-actions">'
+        +(waLink?'<a href="'+waLink+'" target="_blank" class="eq-card-btn wa">💬 WhatsApp</a>':'<span class="eq-card-btn" style="opacity:.3;cursor:default">💬 Sem tel</span>')
+        +'<button class="eq-card-btn" onclick="copiarDadosEquipe('+i+')">📋 Copiar</button>'
+        +'</div></div>';
     }).join('') + '</div>';
 
   var addDiv = document.createElement('div');
@@ -6988,6 +7022,11 @@ function renderEquipes(){
   updateSubtitle('sub-equipes', state.equipes.length + ' equipes');
   var btnRow = document.getElementById('equipes-btn-row');
   if(btnRow) btnRow.style.display = state.equipes.length ? 'flex' : 'none';
+}
+
+function updateEqField(idx, field, val){
+  state.equipes[idx][field] = val;
+  saveState();
 }
 
 function copiarDadosEquipe(idx){
@@ -7024,6 +7063,10 @@ function abrirModalEquipe(){
           <input id="neq-especialidade" class="field" placeholder="Ex: Elétrica, Marcenaria..." style="width:100%;margin-top:4px"></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Telefone / WhatsApp</label>
           <input id="neq-telefone" class="field" placeholder="(41) 9xxxx-xxxx" style="width:100%;margin-top:4px"></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">E-mail</label>
+          <input id="neq-email" class="field" placeholder="email@empresa.com" style="width:100%;margin-top:4px"></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Chave PIX</label>
+          <input id="neq-pix" class="field" placeholder="CNPJ, CPF, email ou chave" style="width:100%;margin-top:4px"></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
         <button onclick="document.getElementById('modal-add-equipe').remove()" class="btn btn-outline">Cancelar</button>
@@ -7044,11 +7087,17 @@ function salvarEquipeManual(){
     responsavel: document.getElementById('neq-responsavel').value.trim(),
     especialidade: document.getElementById('neq-especialidade').value.trim(),
     telefone: document.getElementById('neq-telefone').value.trim(),
+    email: (document.getElementById('neq-email')||{value:''}).value.trim(),
+    pix: (document.getElementById('neq-pix')||{value:''}).value.trim(),
     presenca: {seg:'nd',ter:'nd',qua:'nd',qui:'nd',sex:'nd'},
     nota: ''
   });
   renderEquipes();
   saveState();
+  // Atualizar presença na aba Visita com a nova equipe
+  if(typeof carregarDia === 'function' && typeof diarioDiaSelecionado !== 'undefined'){
+    carregarDia(diarioDiaSelecionado);
+  }
   document.getElementById('modal-add-equipe').remove();
   toast(`✅ ${nome} adicionada à obra`,'success');
 }
@@ -7649,70 +7698,35 @@ function gerarJSON(){
 function gerarJSONBaseDados(){
   var c = state.config;
   var json = {
-    meta: {
-      tipo: 'base_de_dados',
-      obra: c.obra||'',
-      cliente: c.cliente||'',
-      data_export: now(),
-      total_servicos: state.servicos.length,
-      total_equipes: state.equipes.length
-    },
-    servicos: state.servicos.map(function(s){
-      return {
-        cod: s.cod,
-        cod_bd: s.cod_bd||'',
-        categoria: s.categoria||'',
-        descricao: s.descricao||'',
-        unidade: s.unidade||'vb',
-        quantidade: s.quantidade||1,
-        valor_unitario: s.valor_unitario||0,
-        valor: s.valor||0,
-        equipe: s.equipe||'',
-        equipe_nome: s.equipe_nome||'',
-        observacao: s.observacao||'',
-        data_inicio: s.data_inicio||'',
-        data_fim: s.data_fim||'',
-        dias_marcados: s.dias_marcados||[],
-        etapas: s.etapas||[],
-        prazo_dias: s.prazo_dias||0,
-        status_atual: s.status_atual||'A EXECUTAR',
-        pct_atual: s.pct_atual||0
-      };
+    gerado_em: new Date().toISOString(),
+    obra: c.obra||'',
+    versao: 'BD-v1',
+    fornecedores: (state.equipes||[]).map(function(e){
+      return {equipe_cod:e.cod||'',nome:e.nome||'',tipo:e.tipo||'Equipe',especialidade:e.especialidade||'',cnpj_cpf:e.cnpj||'',responsavel:e.responsavel||'',telefone:e.telefone||'',email:e.email||'',banco:e.banco||'',pix:e.pix||'',obs_obras:e.nota||'',avaliacao:'',ativo:'SIM'};
     }),
-    equipes: state.equipes.map(function(e){
-      return {
-        cod: e.cod||'',
-        nome: e.nome||'',
-        responsavel: e.responsavel||'',
-        telefone: e.telefone||'',
-        email: e.email||'',
-        banco: e.banco||'',
-        pix: e.pix||'',
-        especialidade: e.especialidade||'',
-        tipo: e.tipo||'',
-        cnpj: e.cnpj||''
-      };
+    servicos: (state.servicos||[]).map(function(s){
+      return {codigo:s.cod||'',categoria:s.categoria||'',descricao:s.descricao||'',unidade:s.unidade||s.un||'vb',ref_rs:s.valor_unitario||s.valor||0,equipe_cod:s.equipe_cod||s.equipe||'',observacoes:s.observacao||''};
     })
   };
   var jsonStr = JSON.stringify(json, null, 2);
   document.getElementById('export-json-bd').value = jsonStr;
-  toast('JSON da Base de Dados gerado — '+json.servicos.length+' serviços e '+json.equipes.length+' equipes', 'success');
+  toast('📦 Base de Dados — '+json.servicos.length+' serviços · '+json.fornecedores.length+' equipes', 'success');
 }
 
 function downloadJSONBD(){
   var el = document.getElementById('export-json-bd');
-  if(!el||!el.value){ gerarJSONBaseDados(); }
+  if(!el||!el.value) gerarJSONBaseDados();
   var data = document.getElementById('export-json-bd').value;
   if(!data){ toast('Gere o JSON primeiro','error'); return; }
   var blob = new Blob([data], {type:'application/json'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
-  var obraSlug = slugify(state.config.obra||'obra');
+  var nomeObra = (state.config.obra||'obra').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
   a.href = url;
-  a.download = 'BD_'+obraSlug+'_'+todayISO()+'.json';
+  a.download = 'base-dados_'+nomeObra+'_'+new Date().toISOString().slice(0,10)+'.json';
   a.click();
   URL.revokeObjectURL(url);
-  toast('Download iniciado','success');
+  toast('📦 JSON Base de Dados exportado','success');
 }
 
 function gerarPrompt(){  const c = state.config;
@@ -8817,7 +8831,22 @@ const GSCRIPT_CODE = `// ══════════════════�
 // ══════════════════════════════════════════════════════════
 
 function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
+  var data;
+  try {
+    // Formato 1: application/x-www-form-urlencoded com campo 'payload'
+    if(e.parameter && e.parameter.payload){
+      data = JSON.parse(e.parameter.payload);
+    }
+    // Formato 2: text/plain ou application/json no body
+    else if(e.postData && e.postData.contents){
+      data = JSON.parse(e.postData.contents);
+    }
+    else {
+      return ContentService.createTextOutput(JSON.stringify({status:'error', message:'Nenhum payload recebido'})).setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch(parseErr){
+    return ContentService.createTextOutput(JSON.stringify({status:'error', message:'JSON inválido: '+parseErr.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var result = { status: 'ok', updates: 0, errors: [] };
 
@@ -9319,37 +9348,36 @@ async function aplicarNaPlanilha(){
   };
 
   try {
+    // Usar mesmo padrão do sync que funciona: POST urlencoded
+    const jsonStr = JSON.stringify(payload);
     const resp = await fetch(url, {
       method:   'POST',
-      headers:  { 'Content-Type': 'text/plain;charset=utf-8' },
-      body:     JSON.stringify(payload),
+      headers:  { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:     'payload=' + encodeURIComponent(jsonStr),
       redirect: 'follow'
     });
 
-    // Apps Script com redirect pode retornar opaque — tratar como sucesso
     let result = {};
-    try { result = await resp.json(); } catch(e){ result = { status: 'ok' }; }
+    try { result = await resp.json(); } catch(e){ 
+      // Redirect opaco — tratar como sucesso provável
+      result = { status: 'ok', opaque: true }; 
+    }
 
     const isOk = result.status === 'ok' || result.status === 'partial' || result.ok;
     if(isOk){
       const nS = srvs.length;
       const nP = (state.pagamentos||[]).length;
-      const nU = result.updates || nS;
-      const errs = (result.errors||[]).length;
       let msg = '✅ Planilha sincronizada! ' + nS + ' serviços';
       if(nP) msg += ' · ' + nP + ' pagamentos';
-      if(errs) msg += ' · ' + errs + ' avisos';
-      toast(msg, errs ? 'warning' : 'success');
-      if(errs) console.warn('Sync avisos:', result.errors);
+      if(result.errors && result.errors.length) msg += ' · ' + result.errors.length + ' avisos';
+      if(result.opaque) msg += ' (verificar planilha)';
+      toast(msg, (result.errors && result.errors.length || result.opaque) ? 'warning' : 'success');
     } else {
       toast('⚠️ ' + (result.msg || result.message || 'Resposta inesperada'), 'warning');
-      console.warn('Sync resultado:', result);
     }
   } catch(e){
-    // ERR_FAILED com CORS opaco pode ocorrer mesmo com sucesso no Apps Script
-    // Se o erro é de rede/CORS, informar que os dados PODEM ter chegado
-    if(e.message && (e.message.includes('Failed to fetch') || e.message.includes('ERR_FAILED'))){
-      toast('⚠️ Requisição enviada mas sem confirmação (CORS). Verifique a planilha.', 'warning');
+    if(e.message && (e.message.includes('Failed to fetch') || e.message.includes('ERR_FAILED') || e.message.includes('NetworkError'))){
+      toast('⚠️ Requisição enviada — verifique a planilha para confirmar.', 'warning');
     } else {
       toast('Erro: ' + e.message, 'error');
     }

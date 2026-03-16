@@ -9414,7 +9414,7 @@ function _carregarDiaComOffset(){
     _atualizarReadOnly();
     return;
   }
-  // Semana passada — modo leitura
+  // Semana passada — carrega dados arquivados mas permite edição
   const semanaAlvo = (state.config.semana || 1) + diarioSemanaOffset;
   const visitaSemana = (state.visitas || []).find(v => v.semana === semanaAlvo);
   const ta = document.getElementById('transcricao');
@@ -9425,14 +9425,23 @@ function _carregarDiaComOffset(){
 }
 
 function _atualizarReadOnly(){
-  const isLeitura = diarioSemanaOffset < 0;
+  const isPast = diarioSemanaOffset < 0;
   const ta = document.getElementById('transcricao');
   if(ta){
-    ta.readOnly = isLeitura;
-    ta.style.opacity = isLeitura ? '0.6' : '1';
+    ta.readOnly = false; // sempre editável
+    ta.style.opacity = '1';
   }
   const badge = document.getElementById('diario-readonly-badge');
-  if(badge) badge.style.display = isLeitura ? 'inline-block' : 'none';
+  if(badge){
+    if(isPast){
+      badge.style.display = 'inline-block';
+      badge.innerHTML = '⚠️ editando semana anterior';
+      badge.style.background = 'rgba(180,121,31,.12)';
+      badge.style.color = '#B4791F';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
   const btnProx = document.getElementById('btn-diario-prox');
   if(btnProx) btnProx.style.opacity = diarioSemanaOffset >= 0 ? '0.3' : '1';
 }
@@ -9457,9 +9466,18 @@ function renderDiarioBar(){
   var btnProx = document.getElementById('btn-diario-prox');
   if(btnProx) btnProx.style.opacity = diarioSemanaOffset >= 0 ? '0.3' : '1';
 
-  // Read-only indicator
+  // Warning indicator (not lock)
   var roEl = document.getElementById('diario-readonly-badge');
-  if(roEl) roEl.style.display = isReadOnly ? 'inline-block' : 'none';
+  if(roEl){
+    if(isReadOnly){
+      roEl.style.display = 'inline-block';
+      roEl.innerHTML = '⚠️ editando semana anterior';
+      roEl.style.background = 'rgba(180,121,31,.12)';
+      roEl.style.color = '#B4791F';
+    } else {
+      roEl.style.display = 'none';
+    }
+  }
 
   bar.innerHTML = DIAS_SEMANA.map(dia => {
     const temDados = d[dia] && (d[dia].texto || Object.values(d[dia].presenca||{}).some(Boolean));

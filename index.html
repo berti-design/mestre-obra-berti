@@ -2772,6 +2772,13 @@ body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!import
     </div>
   </div>
   <div class="gt-scroll" id="gt-scroll"><div id="gt-grid"></div></div>
+  <div style="padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <button onclick="salvarCronograma()" id="btn-salvar-crono" style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-family:var(--font-display);font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;letter-spacing:.3px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      SALVAR CRONOGRAMA
+    </button>
+    <span id="crono-save-status" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
+  </div>
   <div class="gt-legenda" id="gt-legenda" style="padding:8px 12px"></div>
 </div>
 </div><!-- /tab-panel tab-cronograma -->
@@ -3955,6 +3962,11 @@ async function sbVerStatus(){
 
 async function sbSyncManual(){
   if(!state?.config?.obra){ toast('Nenhuma obra carregada','error'); return; }
+  // Se cronograma tem edições pendentes, salvar direto
+  if(_cronoDirty){
+    salvarCronograma();
+    return;
+  }
   const obraKey = slugify(state.config.obra||'default');
   toast('☁ Buscando dados na nuvem…','info');
   sbAtualizarIndicador('sync');
@@ -3989,7 +4001,11 @@ async function sbSyncManual(){
     renderAll();
     toast('✓ Dados atualizados da nuvem!','success');
   } else {
-    toast('✓ Seus dados locais já são os mais recentes','success');
+    // Local mais recente — enviar para nuvem (sync automático está desligado)
+    const sbData = JSON.parse(JSON.stringify(state));
+    sbData.fotos = (sbData.fotos||[]).map(function(f){ return f.cloud&&f.url ? {...f,src:f.url,b64:undefined} : {...f,b64:undefined}; });
+    sbSave(obraKey, sbData);
+    toast('☁ Enviando dados locais para a nuvem...','success');
   }
 }
 
@@ -4013,12 +4029,10 @@ function saveState(){
       currentObraKey = newKey;
       localStorage.setItem(newKey, JSON.stringify(toSave));
 
-      // Sync Supabase (debounced 3s)
-      const sbData = JSON.parse(JSON.stringify(toSave));
-      sbData.fotos = (sbData.fotos||[]).map(function(f){ return f.cloud&&f.url ? {...f,src:f.url,b64:undefined} : {...f,b64:undefined}; });
-      sbSave(newKey.replace('cockpit_',''), sbData);
+      // Nuvem: NÃO faz sync automático — apenas via botão SALVAR CRONOGRAMA ou pill
+      // Isso evita race conditions e perda de dados durante edições rápidas
 
-      // Apps Script sync só se configurado (Supabase é o sync principal)
+      // Apps Script sync só se configurado
       if(getSyncScript()){
         _autoSyncPending = true;
         agendarAutoSync();
@@ -5955,6 +5969,7 @@ function ganttCellClick(e, idx, dayIdx, etapa){
     _ganttSelectState = null;
     saveState();
     renderGT();
+    _marcarCronoDirty();
     toast('\u2713 Período definido','success');
     return;
   }
@@ -6038,6 +6053,7 @@ function _ganttBarDragUp(){
   document.removeEventListener('touchmove',_ganttBarDragMoveTouch);
   document.removeEventListener('touchend',_ganttBarDragUp);
   saveState();
+  _marcarCronoDirty();
 }
 
 // ── T3: Etapas ──
@@ -6056,7 +6072,7 @@ function ganttRemoverEtapa(e,idx,etapaIdx){
   e.stopPropagation();
   var s=state.servicos[idx];
   if(s.etapas) s.etapas.splice(etapaIdx,1);
-  saveState(); renderGT();
+  saveState(); renderGT(); _marcarCronoDirty();
 }
 
 function ganttUpdateEtapaData(idx,etapaIdx,campo,val){
@@ -6069,7 +6085,7 @@ function ganttUpdateEtapaData(idx,etapaIdx,campo,val){
     while(cur<=end){dias.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
     s.etapas[etapaIdx].dias_marcados=dias;
   }
-  saveState(); renderGT();
+  saveState(); renderGT(); _marcarCronoDirty();
 }
 
 // ── T4: Inputs de data sincronizam dias_marcados ──
@@ -6083,6 +6099,7 @@ function ganttUpdatePct(idx,val){
   updatePctBadge();
   renderOrcPainel();
   renderGT();
+  _marcarCronoDirty();
 }
 
 function ganttUpdateData(idx,campo,val){
@@ -6093,10 +6110,98 @@ function ganttUpdateData(idx,campo,val){
     while(cur<=end){dias.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
     s.dias_marcados=dias;
   }
-  saveState(); renderGT();
+  saveState(); renderGT(); _marcarCronoDirty();
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CRONOGRAMA DIRTY — indicador visual de alterações pendentes
+// ═══════════════════════════════════════════════════════════════
+var _cronoDirty = false;
+function _marcarCronoDirty(){
+  _cronoDirty = true;
+  var btn = document.getElementById('btn-salvar-crono');
+  if(btn){
+    btn.style.background = '#B45309';
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> SALVAR CRONOGRAMA ●';
+  }
+  var lbl = document.getElementById('crono-save-status');
+  if(lbl) lbl.textContent = '⚠ Alterações não salvas na nuvem';
+}
+function _limparCronoDirty(){
+  _cronoDirty = false;
+  var btn = document.getElementById('btn-salvar-crono');
+  if(btn){
+    btn.style.background = 'var(--primary)';
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> SALVAR CRONOGRAMA';
+  }
+}
 
+// ═══════════════════════════════════════════════════════════════
+// SALVAR CRONOGRAMA — confirmação explícita + sync forçado
+// ═══════════════════════════════════════════════════════════════
+function salvarCronograma(){
+  const btn = document.getElementById('btn-salvar-crono');
+  const lbl = document.getElementById('crono-save-status');
+  if(btn){ btn.disabled = true; btn.style.opacity = '.6'; }
+
+  // 1. Garantir que todas as datas estão consistentes
+  (state.servicos||[]).forEach(function(s){
+    if(s.data_inicio && s.data_fim && (!s.dias_marcados || !s.dias_marcados.length)){
+      var dias=[]; var cur=new Date(s.data_inicio+'T00:00:00'); var end=new Date(s.data_fim+'T00:00:00');
+      while(cur<=end){ dias.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+      s.dias_marcados = dias;
+    }
+  });
+
+  // 2. Salvar no localStorage
+  sanitizeState(state);
+  state._version = STATE_VERSION;
+  state._savedAt = new Date().toISOString();
+  var toSave = JSON.parse(JSON.stringify(state));
+  toSave.fotos = toSave.fotos.map(function(f){ return f.cloud&&f.url ? {...f,src:f.url} : f; });
+  var newKey = 'cockpit_' + slugify(toSave.config.obra||'default');
+  currentObraKey = newKey;
+  localStorage.setItem(newKey, JSON.stringify(toSave));
+
+  // 3. Forçar sync IMEDIATO para Supabase (sem debounce)
+  clearTimeout(_sbSaveTimer);
+  var sbData = JSON.parse(JSON.stringify(toSave));
+  sbData.fotos = (sbData.fotos||[]).map(function(f){ return f.cloud&&f.url ? {...f,src:f.url,b64:undefined} : {...f,b64:undefined}; });
+  var obraKey = newKey.replace('cockpit_','');
+
+  (async function(){
+    try {
+      if(lbl) lbl.textContent = '☁ Enviando para nuvem...';
+      var payload = { obra_key: obraKey, data: sbData, updated_at: state._savedAt };
+      var r = await fetch(SB_URL + '/rest/v1/' + SB_TABLE, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Prefer':'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(15000)
+      });
+      if(r.ok || r.status === 201 || r.status === 204){
+        _sbOnline = true;
+        sbAtualizarIndicador('ok');
+        var ts = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        if(lbl) lbl.textContent = '✅ Salvo local + nuvem · ' + ts;
+        toast('✅ Cronograma salvo e sincronizado!','success');
+        _limparCronoDirty();
+      } else {
+        throw new Error('HTTP ' + r.status);
+      }
+    } catch(e){
+      _sbOnline = false;
+      sbAtualizarIndicador('fail');
+      if(lbl) lbl.textContent = '⚠️ Salvo local — nuvem falhou';
+      toast('⚠️ Cronograma salvo local, mas nuvem falhou: ' + e.message,'warning');
+    }
+    if(btn){ btn.disabled = false; btn.style.opacity = '1'; }
+  })();
+
+  renderGT();
+  renderOrcPainel();
+  atualizarBadgesAbas();
+}
 async function syncOrcamentoPlanilha(){
   const url = getGscriptUrl();
   if(!url){
@@ -14085,6 +14190,10 @@ async function salvarFornecedorNovo(){
 // SISTEMA DE ABAS
 // ───────────────────────────────────────────────
 function switchTab(tabId) {
+  // Aviso se sair do cronograma com alterações não salvas
+  if(_cronoDirty && state.abaAtiva === 'tab-cronograma' && tabId !== 'tab-cronograma'){
+    toast('⚠️ Cronograma tem alterações não salvas na nuvem — clique SALVAR CRONOGRAMA','warning',4000);
+  }
   // desativar todos os painéis e botões
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));

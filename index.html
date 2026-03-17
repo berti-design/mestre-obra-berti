@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Mestre de Obra — Berti Construtora — v45</title>
+<title>Mestre de Obra — Berti Construtora — v45b</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Jost:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -2024,7 +2024,7 @@ body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!import
 <div id="obra-selector">
   <div class="os-header">
     <div class="os-logo" id="os-logo-text">Mestre<span>.</span></div>
-    <div class="os-sub">Cockpit &mdash; Gest&atilde;o de Obras <span style="font-size:9px;opacity:.5;font-family:var(--font-mono)">v45</span></div>
+    <div class="os-sub">Cockpit &mdash; Gest&atilde;o de Obras <span style="font-size:9px;opacity:.5;font-family:var(--font-mono)">v45b</span></div>
   </div>
   <div class="os-body">
     <div class="os-title">Selecione a obra</div>
@@ -3654,6 +3654,9 @@ const STATUS_SRV = ['A EXECUTAR','EM ANDAMENTO','CONCLUÍDO','PAUSADO','AGUARDAN
 const FORMAS = ['PIX','transferência','boleto','cheque','dinheiro','cartão'];
 const DIAS = ['seg','ter','qua','qui','sex'];
 const STATE_VERSION = 4;
+
+// ── Chaves embutidas no HTML (configuração fixa) ──
+if(!localStorage.getItem('mdo_imgbb_key')) localStorage.setItem('mdo_imgbb_key','588ec0d66fb7cefc2ee8aea196125c53');
 
 let srvFilter = 'todos';
 let tlViewWeek = null; // semana atual no cronograma
@@ -18579,7 +18582,7 @@ function abrirPreviewCampo(url){
 
 // ── INIT ──────────────────────────────────────────────────
 function safeInit(){
-  console.log('%c[Mestre de Obra v45] Inicializado', 'color:#2E6645;font-weight:bold;font-size:14px');
+  console.log('%c[Mestre de Obra v45b] Inicializado', 'color:#2E6645;font-weight:bold;font-size:14px');
   try {
     init();
   } catch(e) {

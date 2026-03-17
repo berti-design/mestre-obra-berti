@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Mestre de Obra — Berti Construtora</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Mestre de Obra — Berti Construtora — v45</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Jost:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -2021,7 +2024,7 @@ body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!import
 <div id="obra-selector">
   <div class="os-header">
     <div class="os-logo" id="os-logo-text">Mestre<span>.</span></div>
-    <div class="os-sub">Cockpit &mdash; Gest&atilde;o de Obras</div>
+    <div class="os-sub">Cockpit &mdash; Gest&atilde;o de Obras <span style="font-size:9px;opacity:.5;font-family:var(--font-mono)">v45</span></div>
   </div>
   <div class="os-body">
     <div class="os-title">Selecione a obra</div>
@@ -3853,7 +3856,7 @@ function sbHeaders(){
   };
 }
 
-// Salva state no Supabase — upsert pela PK obra_key (debounced 3s)
+// Salva state no Supabase — upsert pela PK obra_key (debounced 10s)
 function sbSave(obraKey, stateObj){
   clearTimeout(_sbSaveTimer);
   _sbSaveTimer = setTimeout(async function(){
@@ -3889,7 +3892,7 @@ function sbSave(obraKey, stateObj){
       sbAtualizarIndicador('fail');
       console.warn('[Supabase] save falhou:', e.message);
     }
-  }, 3000);
+  }, 10000);
 }
 
 // Carrega obra do Supabase — retorna objeto state ou null
@@ -4046,8 +4049,10 @@ function saveState(){
       currentObraKey = newKey;
       localStorage.setItem(newKey, JSON.stringify(toSave));
 
-      // Nuvem: NÃO faz sync automático — apenas via botão SALVAR CRONOGRAMA ou pill
-      // Isso evita race conditions e perda de dados durante edições rápidas
+      // Sync Supabase automático (debounce 30s — evita race conditions mas mantém multi-dispositivo)
+      const sbData = JSON.parse(JSON.stringify(toSave));
+      sbData.fotos = (sbData.fotos||[]).map(function(f){ return f.cloud&&f.url ? {...f,src:f.url,b64:undefined} : {...f,b64:undefined}; });
+      sbSave(newKey.replace('cockpit_',''), sbData);
 
       // Apps Script sync só se configurado
       if(getSyncScript()){
@@ -11059,6 +11064,7 @@ function aplicarExtracoes(){
   if(!extracaoAtual){ fecharApplyModal(); return; }
   const d = extracaoAtual;
   let count = 0;
+  var cronoUpdates = 0; // contador de atualizações no cronograma
 
   // Data ISO do dia da visita (escopo global da função)
   var _datasVisita = getDiasData(diarioSemanaOffset||0);
@@ -11069,6 +11075,7 @@ function aplicarExtracoes(){
     if(_pp.length===2) _isoHoje = new Date().getFullYear()+'-'+_pp[1]+'-'+_pp[0];
   }
   if(!_isoHoje) _isoHoje = new Date().toISOString().slice(0,10);
+  console.log('[APLICAR] Data da visita:', _isoHoje, '| Dia selecionado:', diarioDiaSelecionado);
 
   try {
 
@@ -11082,24 +11089,30 @@ function aplicarExtracoes(){
       var pctAnterior = srv.pct_atual || 0;
       var pctNovo = s.pct_atual !== undefined ? (parseInt(s.pct_atual)||0) : pctAnterior;
 
+      // Atualizar status e pct
       if(s.status_atual) srv.status_atual = s.status_atual;
       if(s.pct_atual !== undefined) srv.pct_atual = pctNovo;
       if(s.observacao) srv.observacao = s.observacao;
 
       // ── Atualizar cronograma automaticamente ──
-      if(pctNovo > 0 && !srv.data_inicio){
+      var cronoMudou = false;
+      // Sem data_inicio e tem progresso → definir início
+      if(!srv.data_inicio && pctNovo > 0){
         srv.data_inicio = _isoHoje;
+        cronoMudou = true;
       }
-      if(pctNovo >= 100 && !srv.data_fim){
-        srv.data_fim = _isoHoje;
+      // Sem data_fim → definir fim
+      if(!srv.data_fim){
+        if(pctNovo >= 100) { srv.data_fim = _isoHoje; cronoMudou = true; }
+        else if(srv.data_inicio) { srv.data_fim = _isoHoje; cronoMudou = true; }
       }
-      if(srv.data_inicio && !srv.data_fim){
-        srv.data_fim = _isoHoje;
-      }
-      // Sempre recalcular dias_marcados quando há datas
+      // Sempre recalcular dias_marcados
       if(srv.data_inicio){
         srv.dias_marcados = _gerarDiasMarcados(srv.data_inicio, srv.data_fim || srv.data_inicio);
+        cronoMudou = true;
       }
+      if(cronoMudou) cronoUpdates++;
+      console.log('[APLICAR]', srv.cod, '| pct:', pctAnterior+'→'+pctNovo, '| inicio:', srv.data_inicio, '| fim:', srv.data_fim, '| dias:', (srv.dias_marcados||[]).length);
       count++;
     }
   });
@@ -11204,24 +11217,31 @@ function aplicarExtracoes(){
   extracaoAtual = null;
 
   // ── Varredura final: preencher datas faltantes em TODOS os serviços com progresso ──
+  var sweepCount = 0;
   (state.servicos||[]).forEach(function(srv){
     var pct = srv.pct_atual || 0;
+    var mudou = false;
     if(pct > 0 && !srv.data_inicio){
       srv.data_inicio = _isoHoje;
+      mudou = true;
     }
     if(pct >= 100 && !srv.data_fim){
       srv.data_fim = _isoHoje;
+      mudou = true;
     }
     if(srv.data_inicio && !srv.data_fim && pct > 0){
       srv.data_fim = _isoHoje;
+      mudou = true;
     }
     // Sempre recalcular dias_marcados se tem datas
     if(srv.data_inicio){
       srv.dias_marcados = _gerarDiasMarcados(srv.data_inicio, srv.data_fim || srv.data_inicio);
+      if(mudou) sweepCount++;
     }
   });
+  if(sweepCount > 0) console.log('[APLICAR] Varredura: '+sweepCount+' serviços com datas preenchidas');
 
-  // Re-render
+  // Re-render TUDO
   renderServicos();
   renderEquipes();
   renderPendencias();
@@ -11229,10 +11249,13 @@ function aplicarExtracoes(){
   renderNotas();
   renderCronograma();
   renderDrawer();
+  renderOrcPainel();
   // Re-renderizar presença na tela de visita
   var _diaPresAtual = (state.diario||{})[diarioDiaSelecionado];
   renderPresencaDiario(_diaPresAtual ? (_diaPresAtual.presenca||{}) : {});
   renderDiarioBar();
+  updatePctBadge();
+  atualizarBadgesAbas();
 
   // Save to visit history
   const narrativaOriginal = document.getElementById('transcricao').value.trim();
@@ -11248,7 +11271,9 @@ function aplicarExtracoes(){
   renderHistoricoVisitas();
 
   saveState();
-  toast('✅ ' + count + ' atualizações aplicadas ao Cockpit!', 'success');
+  var msg = '✅ ' + count + ' atualizações aplicadas ao Cockpit!';
+  if(cronoUpdates > 0) msg += ' | 📅 ' + cronoUpdates + ' serviços no cronograma';
+  toast(msg, 'success', 4000);
   } catch(e){
     console.error('aplicarExtracoes erro:', e);
     toast('Erro ao aplicar: ' + e.message, 'error');
@@ -18552,6 +18577,7 @@ function abrirPreviewCampo(url){
 
 // ── INIT ──────────────────────────────────────────────────
 function safeInit(){
+  console.log('%c[Mestre de Obra v45] Inicializado', 'color:#2E6645;font-weight:bold;font-size:14px');
   try {
     init();
   } catch(e) {

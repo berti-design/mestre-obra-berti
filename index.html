@@ -7126,7 +7126,8 @@ function getImgbbKey(){
   return localStorage.getItem('mdo_imgbb_key')
     || localStorage.getItem('imgbbKey')
     || localStorage.getItem('imgbb_api_key')
-    || ((document.getElementById('cfg-imgbb-key')||{value:''}).value||'').trim() || '';
+    || ((document.getElementById('cfg-imgbb-key')||{value:''}).value||'').trim()
+    || '588ec0d66fb7cefc2ee8aea196125c53';
 }
 
 async function uploadToImgbb(base64DataUrl){
@@ -13254,6 +13255,7 @@ function init(){
 
   var _ak=localStorage.getItem('mdo_api_key')||'';
   var _ik=localStorage.getItem('mdo_imgbb_key')||'';
+  if(!_ik){ localStorage.setItem('mdo_imgbb_key','588ec0d66fb7cefc2ee8aea196125c53'); _ik='588ec0d66fb7cefc2ee8aea196125c53'; }
   if(_ak) mostrarApiConfigurada();
   if(_ik) mostrarImgbbConfigurada();
 

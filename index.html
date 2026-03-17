@@ -12226,11 +12226,15 @@ async function gerarRelatorioSemanalCliente(){
   // Próxima semana — serviços programados com datas do cronograma
   function _fmtCli(d){ if(!d) return '—'; var dt=new Date(d.includes('/')?d.split('/').reverse().join('-'):d); return isNaN(dt)?'—':String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0'); }
   function _toDateCli(d){ if(!d) return null; var dt=new Date((d.includes('/')?d.split('/').reverse().join('-'):d)+'T00:00:00'); return isNaN(dt)?null:dt; }
-  // Calcula intervalo da próxima semana (dia seguinte ao periodo_fim + 6 dias)
+  // Calcula intervalo da PRÓXIMA semana baseado em periodo_ini + número da semana
   var _proxIni = null, _proxFim = null;
-  if(c.periodo_fim){
-    _proxIni = _toDateCli(c.periodo_fim);
-    if(_proxIni){ _proxIni = new Date(_proxIni.getTime()+86400000); _proxFim = new Date(_proxIni.getTime()+6*86400000); }
+  if(c.periodo_ini){
+    var _semIni = _toDateCli(c.periodo_ini);
+    if(_semIni){
+      // Início da próxima semana = periodo_ini + semana * 7 dias
+      _proxIni = new Date(_semIni.getTime() + (semana) * 7 * 86400000);
+      _proxFim = new Date(_proxIni.getTime() + 6 * 86400000);
+    }
   }
   const proxSrvs = srvs.filter(s=>{
     var pct = s.pct_atual||0;

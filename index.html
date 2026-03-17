@@ -3024,8 +3024,8 @@ body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!import
   </div>
   <div class="sec-body">
     <!-- inputs ocultos -->
-    <input type="file" id="foto-input-camera" accept="image/*" capture="environment" multiple style="display:none" onchange="handleFotoInput(this)">
-    <input type="file" id="foto-input-galeria" accept="image/*" multiple style="display:none" onchange="handleFotoInput(this)">
+    <input type="file" id="foto-input-camera" accept="image/*,.heic,.heif" capture="environment" multiple style="display:none" onchange="handleFotoInput(this)">
+    <input type="file" id="foto-input-galeria" accept="image/*,.heic,.heif" multiple style="display:none" onchange="handleFotoInput(this)">
 
     <!-- dois botões + drop zone -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)">
@@ -7672,20 +7672,58 @@ function renderPagamentos(){
 // ───────────────────────────────────────────────
 // RENDER FOTOS
 // ───────────────────────────────────────────────
-function handleFotoInput(input){
+async function handleFotoInput(input){
   const files = Array.from(input.files);
-  files.forEach(f=>processarFoto(f));
   input.value='';
+  if(!files.length) return;
+  if(files.length > 1) toast('Processando '+files.length+' fotos...','info');
+  for(var i=0; i<files.length; i++){
+    await processarFoto(files[i]);
+    // Pequeno delay entre uploads pra não estourar rate limit do ImgBB
+    if(i < files.length-1) await new Promise(r=>setTimeout(r, 300));
+  }
+  if(files.length > 1) toast(files.length+' fotos processadas','success');
 }
 
-function handleFotoDrop(e){
+async function handleFotoDrop(e){
   e.preventDefault();
   document.getElementById('foto-drop').classList.remove('drag');
-  Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/')).forEach(f=>processarFoto(f));
+  var files = Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/')||/\.(heic|heif)$/i.test(f.name));
+  for(var i=0; i<files.length; i++){
+    await processarFoto(files[i]);
+    if(i < files.length-1) await new Promise(r=>setTimeout(r, 300));
+  }
 }
 
-function processarFoto(file){
-  processarFotoComUpload(file);
+async function processarFoto(file){
+  // HEIC/HEIF do iPhone → converter para JPEG antes de processar
+  var isHeic = /\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif';
+  if(isHeic){
+    toast('Convertendo HEIC → JPEG...','info');
+    try {
+      await _loadHeic2Any();
+      var result = await heic2any({blob:file,toType:'image/jpeg',quality:0.85});
+      var jpegFile = new File([result], file.name.replace(/\.(heic|heif)$/i,'.jpg'), {type:'image/jpeg'});
+      await processarFotoComUpload(jpegFile);
+    } catch(e){
+      console.error('HEIC conversion error:', e);
+      toast('Erro ao converter HEIC — tente converter manualmente','error');
+    }
+    return;
+  }
+  await processarFotoComUpload(file);
+}
+
+var _heic2anyLoaded = false;
+function _loadHeic2Any(){
+  if(_heic2anyLoaded && typeof heic2any !== 'undefined') return Promise.resolve();
+  return new Promise(function(resolve,reject){
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js';
+    s.onload = function(){ _heic2anyLoaded=true; resolve(); };
+    s.onerror = function(){ reject(new Error('Falha ao carregar heic2any')); };
+    document.head.appendChild(s);
+  });
 }
 
 function updateFoto(idx, field, val){
@@ -13449,6 +13487,35 @@ function _buildPortalCliente(){
   const emAberto=Math.max(0,valContrato-entradas);
   const pctPago=valContrato>0?Math.min(100,Math.round(entradas/valContrato*100)):0;
 
+  // ── ADERÊNCIA AO CRONOGRAMA ──
+  // % previsto = dias decorridos / dias totais da obra
+  // % executado = pctGeral (ponderado por valor)
+  var _aderPrevisto=0, _aderDiasDecorridos=0, _aderDiasTotal=0, _aderDesvio=0, _aderStatus='';
+  var _obraIniD=null, _obraFimD=null;
+  if(c.periodo_ini){
+    _obraIniD=new Date((c.periodo_ini.includes('/')?c.periodo_ini.split('/').reverse().join('-'):c.periodo_ini)+'T00:00:00');
+    if(isNaN(_obraIniD)) _obraIniD=null;
+  }
+  if(c.periodo_fim||c.data_fim){
+    var _ff=c.periodo_fim||c.data_fim;
+    _obraFimD=new Date((_ff.includes('/')?_ff.split('/').reverse().join('-'):_ff)+'T00:00:00');
+    if(isNaN(_obraFimD)) _obraFimD=null;
+  }
+  if(_obraIniD&&_obraFimD){
+    var _agora=new Date();_agora.setHours(0,0,0,0);
+    _aderDiasTotal=Math.max(1,Math.round((_obraFimD-_obraIniD)/86400000));
+    _aderDiasDecorridos=Math.max(0,Math.round((_agora-_obraIniD)/86400000));
+    _aderPrevisto=Math.min(100,Math.round(_aderDiasDecorridos/_aderDiasTotal*100));
+    _aderDesvio=pctGeral-_aderPrevisto; // positivo=adiantado, negativo=atrasado
+    if(_aderDesvio>=0) _aderStatus='no-prazo';
+    else if(_aderDesvio>=-5) _aderStatus='atencao';
+    else _aderStatus='atrasado';
+  }
+  var _aderCorFundo=_aderStatus==='no-prazo'?'#E8F5E9':_aderStatus==='atencao'?'#FFF8E1':'#FFEBEE';
+  var _aderCorTexto=_aderStatus==='no-prazo'?'#2E7D32':_aderStatus==='atencao'?'#F57F17':'#C62828';
+  var _aderLabel=_aderStatus==='no-prazo'?'No prazo':_aderStatus==='atencao'?'Atenção':'Atrasado';
+  var _diasRestantes=Math.max(0,_aderDiasTotal-_aderDiasDecorridos);
+
   const emExec=srvs.filter(s=>(s.pct_atual||0)>0&&(s.pct_atual||0)<100);
   const prox=srvs.filter(s=>(s.pct_atual||0)===0);
   const fotosOk=fotos.filter(f=>f.url||f.src);
@@ -13630,7 +13697,19 @@ a{text-decoration:none;color:inherit}
   .fg{grid-template-columns:repeat(2,1fr)}
   .tab{padding:9px 14px;font-size:11px}
 }
-@media print{.tabs{position:static}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}
+@media print{
+  .tabs{display:none!important}
+  .pnl{display:block!important;padding:20px 24px!important;page-break-inside:avoid}
+  .pnl+.pnl{border-top:2px solid var(--p1);margin-top:0}
+  .wrap{max-width:100%!important;box-shadow:none!important}
+  .ftr{page-break-before:always}
+  .gf{display:none!important}
+  .foto-card{break-inside:avoid}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  body{background:#fff!important}
+}
+.print-divider{display:none;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:var(--p1);text-transform:uppercase;letter-spacing:1px;padding:14px 0 8px;border-bottom:2px solid var(--p1);margin-bottom:16px}
+@media print{.print-divider{display:block!important}}
 </style></head><body>
 <div class="wrap">
   <div class="hdr">
@@ -13645,6 +13724,7 @@ a{text-decoration:none;color:inherit}
     <div class="tab" onclick="T(3)">Pagamentos</div>
     <div class="tab" onclick="T(4)">Fotos</div>
     ${links.length?'<div class="tab" onclick="T(5)">Documentos</div>':''}
+    <div class="tab" onclick="exportPDF()" style="margin-left:auto;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:6px 14px">⬇ PDF</div>
   </div>
 
   <!-- ═══ OBRA ═══ -->
@@ -13668,6 +13748,32 @@ a{text-decoration:none;color:inherit}
         <div style="font-size:9px;color:var(--sub)">em aberto</div>
       </div>
     </div>
+    <!-- ADERÊNCIA AO CRONOGRAMA -->
+    ${_obraIniD&&_obraFimD?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:20px">
+      <div style="padding:16px 20px;background:${_aderCorFundo}">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:${_aderCorTexto};text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Aderência</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:${_aderCorTexto};line-height:1">${_aderDesvio>=0?'+':''}${_aderDesvio}pp</div>
+        <div style="font-size:10px;font-weight:700;color:${_aderCorTexto};margin-top:4px;text-transform:uppercase;letter-spacing:.5px">${_aderLabel}</div>
+      </div>
+      <div style="padding:16px 20px;border-left:1px solid var(--line);border-right:1px solid var(--line)">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Previsto vs Executado</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div style="font-size:10px;color:var(--sub);min-width:55px">Previsto</div>
+          <div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;background:#999;border-radius:3px;width:${_aderPrevisto}%"></div></div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:var(--sub);min-width:32px;text-align:right">${_aderPrevisto}%</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:10px;color:var(--p1);font-weight:600;min-width:55px">Executado</div>
+          <div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--p2);border-radius:3px;width:${pctGeral}%"></div></div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:var(--p1);min-width:32px;text-align:right">${pctGeral}%</div>
+        </div>
+      </div>
+      <div style="padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--ink)">${_aderDiasDecorridos}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px">Dias decorridos</div></div>
+        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--gold)">${_diasRestantes}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px">Dias restantes</div></div>
+        <div style="grid-column:span 2"><div style="height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:4px"><div style="height:100%;border-radius:2px;background:var(--p1);width:${Math.round(_aderDiasDecorridos/_aderDiasTotal*100)}%"></div></div><div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--sub);margin-top:3px;text-align:center">${_aderDiasDecorridos} de ${_aderDiasTotal} dias</div></div>
+      </div>
+    </div>`:''}
     ${narrativa?'<div class="narr">'+esc2(narrativa)+'</div>':''}
     <!-- PRÓXIMOS SERVIÇOS — calculado automaticamente pela data de início da obra -->
     <div class="sh">Próxima Semana <span id="prox-label" style="font-weight:400;font-size:11px;color:var(--sub);margin-left:8px"></span></div>
@@ -13678,6 +13784,7 @@ a{text-decoration:none;color:inherit}
 
   <!-- ═══ ORÇAMENTO ═══ -->
   <div class="pnl" id="P1">
+    <div class="print-divider">Orçamento</div>
     <div class="sh">Resumo por Categoria</div>
     <div style="display:flex;gap:16px;margin-bottom:14px;font-size:12px;color:var(--sub)">
       <span>Contrato: <strong style="color:var(--ink)">R$ ${fmtNum(valContrato)}</strong></span>
@@ -13694,6 +13801,7 @@ a{text-decoration:none;color:inherit}
 
   <!-- ═══ CRONOGRAMA ═══ -->
   <div class="pnl" id="P2">
+    <div class="print-divider">Cronograma</div>
     <div class="sh">Cronograma Visual</div>
     <div class="gf">
       <div class="gf-btn on" onclick="gFilter('2sem')">2 Semanas</div>
@@ -13706,6 +13814,7 @@ a{text-decoration:none;color:inherit}
 
   <!-- ═══ PAGAMENTOS ═══ -->
   <div class="pnl" id="P3">
+    <div class="print-divider">Pagamentos e Medição</div>
     <div class="fin-band">
       <div class="fb"><div class="fb-l">Contrato</div><div class="fb-v">R$ ${fmtNum(valContrato)}</div></div>
       <div class="fb"><div class="fb-l">Pago</div><div class="fb-v g">R$ ${fmtNum(entradas)}</div><div class="fb-s">${pctPago}%</div></div>
@@ -13719,6 +13828,7 @@ a{text-decoration:none;color:inherit}
 
   <!-- ═══ FOTOS ═══ -->
   <div class="pnl" id="P4">
+    <div class="print-divider">Registro Fotográfico</div>
     <div class="sh">Registro Fotográfico — ${fotos.length} fotos</div>
     <div class="fg">${fotosHTML}</div>
   </div>
@@ -13739,6 +13849,16 @@ var PROX=${proxJSON};
 var P1='${p1}';
 
 function T(n){document.querySelectorAll('.pnl').forEach(function(p){p.classList.remove('on')});document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on')});var p=document.getElementById('P'+n);if(p)p.classList.add('on');document.querySelectorAll('.tab')[n].classList.add('on');window.scrollTo(0,0);}
+
+function exportPDF(){
+  // Prepara pra impressão: Gantt em modo total, categorias expandidas
+  _gMode='total';renderGantt();
+  // Expande todas as categorias do orçamento
+  document.querySelectorAll('.orc-det').forEach(function(el){el.style.display='block';});
+  document.querySelectorAll('.orc-chev').forEach(function(el){el.textContent='▾';});
+  // Aguarda render e abre print
+  setTimeout(function(){window.print();},500);
+}
 
 function toggleCat(i){var el=document.getElementById('det-'+i);var ch=document.getElementById('chev-'+i);if(el.style.display==='none'){el.style.display='block';ch.textContent='▾';}else{el.style.display='none';ch.textContent='▸';}}
 

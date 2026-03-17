@@ -15079,12 +15079,25 @@ async function planGerarIA(){
       max_tokens: 1500
     });
 
-    // Parse JSON
+    // Parse JSON — aceita array direto ou objeto com array dentro
     var rawClean = raw.replace(/```json|```/g,'').trim();
-    // Try to find JSON array
-    var match = rawClean.match(/\[[\s\S]*\]/);
-    if(match){
-      var tarefasIA = JSON.parse(match[0]);
+    var tarefasIA = null;
+    try {
+      var parsed = JSON.parse(rawClean);
+      if(Array.isArray(parsed)) tarefasIA = parsed;
+      else if(parsed && typeof parsed === 'object'){
+        // Procura primeiro array dentro do objeto (ex: {tarefas:[...]})
+        var keys = Object.keys(parsed);
+        for(var ki=0;ki<keys.length;ki++){
+          if(Array.isArray(parsed[keys[ki]])){ tarefasIA = parsed[keys[ki]]; break; }
+        }
+      }
+    } catch(e2){
+      // Fallback: regex para encontrar array no texto
+      var match = rawClean.match(/\[[\s\S]*\]/);
+      if(match) try { tarefasIA = JSON.parse(match[0]); } catch(e3){}
+    }
+    if(tarefasIA && tarefasIA.length){
       if(!state.planejamento) state.planejamento = { objetivo:'', tarefas:[] };
       // Manter tarefas manuais e concluídas, adicionar novas da IA
       var mantidas = state.planejamento.tarefas.filter(function(t){ return t.status==='concluida' || t.criado_por==='manual'; });

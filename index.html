@@ -3778,11 +3778,26 @@ let _autoSyncPending = false;
 const AUTO_SYNC_DELAY_MS = 30_000;
 const AUTO_SYNC_MAX_RETRY = 3;
 
+// ── Equipes padrão embutidas no HTML — só são carregadas se state.equipes estiver vazio ──
+const EQUIPES_DEFAULT = [
+  { cod:'EQ-OBR-01', nome:'Valdeci José Empreiteiro', responsavel:'Valdeci José Empreiteiro', especialidade:'Obra Civil / Demolições / Forro / Pintura', presenca:{seg:'nd',ter:'nd',qua:'nd',qui:'nd',sex:'nd'} },
+  { cod:'EQ-ACO-01', nome:'Frio Total AC', responsavel:'Frio Total AC', especialidade:'Ar Condicionado', presenca:{seg:'nd',ter:'nd',qua:'nd',qui:'nd',sex:'nd'} },
+  { cod:'EQ-ELE-01', nome:'Lumitech', responsavel:'Lumitech', especialidade:'Elétrica', presenca:{seg:'nd',ter:'nd',qua:'nd',qui:'nd',sex:'nd'} },
+  { cod:'EQ-FRG-01', nome:'Domínio Refrigeração', responsavel:'Domínio Refrigeração', especialidade:'Rede Frigorífica', presenca:{seg:'nd',ter:'nd',qua:'nd',qui:'nd',sex:'nd'} },
+  { cod:'FOR-ESP-01', nome:'Brumtec', responsavel:'Brumtec', especialidade:'PPCI / Incêndio / CO2', presenca:{seg:'nd',ter:'nd',qua:'nd',qui:'nd',sex:'nd'} },
+  { cod:'EQ-MAR-01', nome:'Marcenaria', responsavel:'Marcenaria', especialidade:'Marcenaria', presenca:{seg:'nd',ter:'nd',qua:'nd',qui:'nd',sex:'nd'} },
+  { cod:'EQ-LIM-01', nome:'Limpeza', responsavel:'Limpeza', especialidade:'Limpeza', presenca:{seg:'nd',ter:'nd',qua:'nd',qui:'nd',sex:'nd'} }
+];
+
 function sanitizeState(s){
   // Garante que todos os campos que devem ser arrays realmente são arrays
   if(!s) return s;
   if(!Array.isArray(s.servicos))   s.servicos   = [];
   if(!Array.isArray(s.equipes))    s.equipes    = [];
+  // Injetar equipes padrão se vazio (embutidas no HTML como fallback)
+  if(s.equipes.length === 0 && EQUIPES_DEFAULT && EQUIPES_DEFAULT.length){
+    s.equipes = JSON.parse(JSON.stringify(EQUIPES_DEFAULT));
+  }
   if(!Array.isArray(s.pagamentos)) s.pagamentos = [];
   if(!Array.isArray(s.fotos))      s.fotos      = [];
   if(!Array.isArray(s.pendencias)) s.pendencias = [];
@@ -4318,7 +4333,7 @@ function loadState(key){
 }
 
 // Carrega nuvem em background e atualiza silenciosamente se for mais novo
-// PROTEÇÃO: compara completude dos dados além do timestamp para evitar sobrescrever dados locais mais ricos
+// O sync MANUAL aplica-se ao UPLOAD (PC→nuvem). Download (nuvem→dispositivo) é sempre automático.
 async function sbLoadBackground(obraKey){
   try {
     const remoto = await sbLoad(obraKey);
@@ -4326,27 +4341,15 @@ async function sbLoadBackground(obraKey){
     const tsLocal  = state._savedAt ? new Date(state._savedAt).getTime() : 0;
     const tsRemoto = new Date(remoto.updated_at).getTime();
 
-    // Se local é mais recente, apenas sobe o local para a nuvem
+    // Se local é mais recente que a nuvem, não fazer nada (upload é manual)
     if(tsLocal >= tsRemoto) return;
 
-    // Comparar "riqueza" dos dados — servicos com pct > 0, presença preenchida, etc.
+    // Nuvem é mais recente — comparar riqueza
     const localRichness = _calcDataRichness(state);
     const remoteRichness = _calcDataRichness(remoto.data);
 
-    // Se nuvem é mais nova MAS local tem dados mais ricos (mais serviços com progresso,
-    // mais presença, mais pagamentos), NÃO sobreescrever — avisar o usuário
-    if(localRichness > remoteRichness + 2){
-      console.warn('[Supabase] Nuvem mais recente mas local mais completo. local=' + localRichness + ' remoto=' + remoteRichness);
-      toast('⚠️ Nuvem desatualizada — seus dados locais são mais completos. Salvando na nuvem...','warning',4000);
-      // Forçar upload do local para a nuvem
-      const sbData = JSON.parse(JSON.stringify(state));
-      sbData.fotos = (sbData.fotos||[]).map(function(f){ return f.cloud&&f.url ? {...f,src:f.url,b64:undefined} : {...f,b64:undefined}; });
-      sbSave(obraKey, sbData);
-      return;
-    }
-
-    // Nuvem mais nova e mais completa (ou similar) — aceitar
-    if(tsRemoto > tsLocal + 5000){
+    // Se nuvem é mais nova E mais rica (ou similar) → aceitar download
+    if(remoteRichness >= localRichness){
       state = migrateState(remoto.data);
       sanitizeState(state);
       currentObraKey = 'cockpit_' + obraKey;
@@ -4354,6 +4357,14 @@ async function sbLoadBackground(obraKey){
       restoreUI();
       renderAll();
       toast('☁ Dados sincronizados da nuvem','success');
+      return;
+    }
+
+    // Nuvem é mais nova MAS local é mais rico → conflito
+    // Perguntar ao usuário se está na tela ativa, senão manter local
+    if(localRichness > remoteRichness + 2){
+      console.warn('[Supabase] Conflito: nuvem mais recente mas local mais completo. local=' + localRichness + ' remoto=' + remoteRichness);
+      toast('⚠️ Conflito: nuvem e local divergem. Use o pill ☁ para resolver.','warning',5000);
     }
   } catch(e){ /* silencioso */ }
 }
@@ -11075,16 +11086,16 @@ function aplicarExtracoes(){
       if(s.observacao) srv.observacao = s.observacao;
 
       // ── Atualizar cronograma automaticamente ──
-      // Serviço iniciou (era 0%, agora >0%) e não tem data_inicio → marcar hoje
-      if(pctAnterior === 0 && pctNovo > 0 && !srv.data_inicio){
+      // Regra: se o serviço tem progresso (>0%) e não tem data_inicio → preencher
+      if(pctNovo > 0 && !srv.data_inicio){
         srv.data_inicio = _isoHoje;
       }
-      // Serviço concluído (chegou a 100%) e não tem data_fim → marcar hoje
+      // Se concluiu (100%) e não tem data_fim → marcar hoje
       if(pctNovo >= 100 && !srv.data_fim){
         srv.data_fim = _isoHoje;
       }
-      // Se tem data_inicio mas não data_fim e está em andamento → data_fim provisória = hoje
-      if(srv.data_inicio && !srv.data_fim && pctNovo > 0 && pctNovo < 100){
+      // Se tem data_inicio mas não data_fim → data_fim provisória = hoje
+      if(srv.data_inicio && !srv.data_fim){
         srv.data_fim = _isoHoje;
       }
       // Recalcular dias_marcados para o Gantt renderizar as barras
@@ -11193,6 +11204,23 @@ function aplicarExtracoes(){
 
   fecharApplyModal();
   extracaoAtual = null;
+
+  // ── Varredura final: preencher datas faltantes em TODOS os serviços com progresso ──
+  (state.servicos||[]).forEach(function(srv){
+    var pct = srv.pct_atual || 0;
+    if(pct > 0 && !srv.data_inicio){
+      srv.data_inicio = _isoHoje;
+    }
+    if(pct >= 100 && !srv.data_fim){
+      srv.data_fim = _isoHoje;
+    }
+    if(srv.data_inicio && !srv.data_fim){
+      srv.data_fim = _isoHoje;
+    }
+    if(srv.data_inicio && (!srv.dias_marcados || !srv.dias_marcados.length)){
+      srv.dias_marcados = _gerarDiasMarcados(srv.data_inicio, srv.data_fim || srv.data_inicio);
+    }
+  });
 
   // Re-render
   renderServicos();
@@ -13028,16 +13056,12 @@ function selecionarObra(key){
     setTimeout(function(){
       sbLoad('__ping__').then(function(){
         sbAtualizarIndicador('ok');
-      }).catch(function(){
-        // silencioso — sbLoad já chama sbAtualizarIndicador
-      });
+      }).catch(function(){});
     }, 1500);
-    // Abrir guia interativo automaticamente se obra já configurada (respeita estado salvo)
     if(typeof guiaAbrir === 'function'){
       setTimeout(function(){
         if((state.config&&state.config.obra||'').trim()){
           if(typeof guiaRestaurarEstado === 'function' && guiaRestaurarEstado()){
-            // Estava fechado — manter fechado, só mostrar botão reabrir
           } else {
             guiaAbrir();
           }
@@ -13047,7 +13071,28 @@ function selecionarObra(key){
     if(typeof atualizarBadgesAbas==='function') setTimeout(function(){ try{atualizarBadgesAbas();}catch(e){}},100);
     toast('Obra "'+state.config.obra+'" carregada','success');
   } else {
-    toast('Erro ao carregar obra','error');
+    // Local vazio — tentar carregar da nuvem direto
+    var obraKey = key.replace('cockpit_','');
+    toast('☁ Buscando dados na nuvem...','info');
+    sbLoad(obraKey).then(function(remoto){
+      if(remoto && remoto.data){
+        state = migrateState(remoto.data);
+        sanitizeState(state);
+        currentObraKey = key.startsWith('cockpit_') ? key : 'cockpit_'+obraKey;
+        localStorage.setItem(currentObraKey, JSON.stringify(state));
+        restoreUI();
+        renderAll();
+        hideObraSelector();
+        if(typeof renderCronograma==='function') try{renderCronograma();}catch(e){}
+        if(typeof renderDrawer==='function') try{renderDrawer();}catch(e){}
+        if(typeof atualizarBadgesAbas==='function') setTimeout(function(){ try{atualizarBadgesAbas();}catch(e){}},100);
+        toast('☁ Obra "'+state.config.obra+'" carregada da nuvem!','success');
+      } else {
+        toast('Obra não encontrada no dispositivo nem na nuvem','error');
+      }
+    }).catch(function(){
+      toast('Erro ao carregar obra','error');
+    });
   }
 }
 

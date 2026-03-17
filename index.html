@@ -3497,7 +3497,7 @@ body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!import
   <div class="rel-preview-bar">
     <div class="rel-preview-bar-title" id="rel-modal-title">Relatório</div>
     <div class="rel-preview-bar-btns">
-      <button class="btn-print" onclick="gerarPDFdoRelatorio()" style="background:var(--primary);color:#fff;border-color:var(--primary)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PDF</button>
+      <button class="btn-print" onclick="gerarPDFdoRelatorio()" style="background:var(--primary);color:#fff;border-color:var(--primary)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Salvar PDF</button>
       <button class="btn-print" onclick="imprimirRelatorio()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:middle;margin-right:5px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Imprimir</button>
       <button class="btn-close-rel" onclick="fecharRelatorio()">✕ Fechar</button>
     </div>
@@ -6555,7 +6555,8 @@ function renderDrawer(){
   const pf = c.periodo_fim ? fmtDate(c.periodo_fim) : '';
   const periodo = pi && pf ? `${pi} a ${pf}` : '';
 
-  const tel = (c.telefone_cliente||'').replace(/\D/g,'');
+  var tel = (c.telefone_cliente||'').replace(/\D/g,'');
+  if(tel && !tel.startsWith('55')) tel = '55' + tel;
   const end = c.endereco_obra||'';
   const pix = c.pix_empresa||'';
 
@@ -7116,7 +7117,9 @@ function renderEquipes(){
 
   el.innerHTML = _renderHeatmapPresenca() + '<div class="eq-grid">' +
     state.equipes.map(function(eq, i){
-      var waLink = eq.telefone ? 'https://wa.me/' + eq.telefone.replace(/\D/g,'') : '';
+      var telClean = eq.telefone ? eq.telefone.replace(/\D/g,'') : '';
+      if(telClean && !telClean.startsWith('55')) telClean = '55' + telClean;
+      var waLink = telClean ? 'https://wa.me/' + telClean : '';
       return '<div class="eq-card-novo"><div class="eq-card-top">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
         +'<div class="eq-card-cod">'+esc(eq.cod)+'</div>'
@@ -8053,7 +8056,8 @@ function renderQuickCopy(){
     const isEmpty = !val;
     let actionHtml = '';
     if(val && opts.wa){
-      const tel = val.replace(/\D/g,'');
+      var tel = val.replace(/\D/g,'');
+      if(tel && !tel.startsWith('55')) tel = '55' + tel;
       actionHtml = `<a href="https://wa.me/${tel}" target="_blank" class="qc-card-action qc-card-link" onclick="event.stopPropagation()" title="WhatsApp">💬</a>`;
     }
     if(val && opts.maps){
@@ -11471,18 +11475,33 @@ function _gerarGanttPDF(modo){
   // Status colors
   var stColors = {'CONCLUÍDO':'#065F46','EM ANDAMENTO':p2,'A EXECUTAR':'#D1D5DB','PAUSADO':'#F59E0B','AGUARDANDO PROJETO':'#8B5CF6'};
 
+  // Paleta pastel para o PDF (legível impresso, profissional)
+  var EQ_COLORS_PASTEL = ['#A7F3D0','#BFDBFE','#DDD6FE','#FDE68A','#FECACA','#A5F3FC','#C7D2FE','#6EE7B7','#FCD34D','#E9D5FF','#FECDD3','#99F6E4'];
+  function _eqColorPastel(cod){
+    var idx = (state.equipes||[]).findIndex(function(e){return e.cod===cod;});
+    return idx >= 0 ? EQ_COLORS_PASTEL[idx % EQ_COLORS_PASTEL.length] : '#E5E7EB';
+  }
+
   function srvRow(s){
     var ini = _toD(s.data_inicio);
     var fim = _toD(s.data_fim) || ini;
     var pct = s.pct_atual||0;
     var isAtrasado = fim && fim < todayD && pct < 100;
-    var barColor = isAtrasado ? '#DC2626' : (stColors[s.status_atual] || '#D1D5DB');
+    // Cor da barra: pastel por equipe para PDF legível
+    var barColor = isAtrasado ? '#FCA5A5' : _eqColorPastel(s.equipe);
 
     var cells = dias.map(function(d){
       var isToday = d.getTime() === todayD.getTime();
-      var inRange = ini && fim && d >= ini && d <= fim;
+      // Verifica se o dia está marcado (dias_marcados) ou se está no range simples
+      var dISO = d.toISOString().slice(0,10);
+      var inRange = false;
+      if(s.dias_marcados && s.dias_marcados.length){
+        inRange = s.dias_marcados.indexOf(dISO) >= 0;
+      } else {
+        inRange = ini && fim && d >= ini && d <= fim;
+      }
       var bg = inRange ? barColor : 'transparent';
-      var opacity = inRange ? (pct >= 100 ? '1' : '0.7') : '1';
+      var opacity = inRange ? (pct >= 100 ? '1' : '0.85') : '1';
       var border = isToday ? 'border-left:2px solid '+p1+';border-right:2px solid '+p1 : 'border-left:1px solid #f5f5f5';
       return '<td style="padding:0;height:16px;'+border+';background:'+bg+';opacity:'+opacity+'"></td>';
     }).join('');
@@ -11495,7 +11514,7 @@ function _gerarGanttPDF(modo){
     })();
 
     return '<tr style="border-bottom:1px solid #EEE">'
-      +'<td style="padding:4px 6px;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis"><div style="font-size:10px;font-weight:600;color:#111">'+esc2(s.descricao)+'</div><div style="font-size:8px;color:#9CA3AF;font-family:monospace">'+esc2(s.cod)+'</div></td>'
+      +'<td style="padding:4px 6px;min-width:200px;max-width:260px;word-wrap:break-word;white-space:normal"><div style="font-size:10px;font-weight:600;color:#111;line-height:1.3">'+esc2(s.descricao)+'</div><div style="font-size:8px;color:#9CA3AF;font-family:monospace">'+esc2(s.cod)+'</div></td>'
       +'<td style="padding:4px 6px;text-align:center">'+stBadge+'</td>'
       +'<td style="padding:4px 6px;text-align:center;font-family:monospace;font-size:9px;font-weight:700;color:'+(pct>=100?'#065F46':'#111')+'">'+pct+'%</td>'
       +cells+'</tr>';
@@ -11553,19 +11572,18 @@ function _gerarGanttPDF(modo){
     <div style="overflow-x:auto">
       <table style="border-collapse:collapse;font-size:10px;width:max-content">
         <thead>
-          <tr><th style="min-width:160px"></th><th style="min-width:70px"></th><th style="min-width:40px"></th>${monHeaders}</tr>
+          <tr><th style="min-width:200px"></th><th style="min-width:70px"></th><th style="min-width:40px"></th>${monHeaders}</tr>
           <tr><th style="padding:4px 6px;text-align:left;background:${p1};color:#fff;font-size:9px">Serviço</th><th style="padding:4px 6px;text-align:center;background:${p1};color:#fff;font-size:9px">Status</th><th style="padding:4px 6px;text-align:center;background:${p1};color:#fff;font-size:9px">%</th>${dayHeaders}</tr>
         </thead>
         <tbody>${tblBody}</tbody>
       </table>
     </div>
-    <div style="display:flex;gap:14px;margin-top:12px;font-size:10px;color:#6B7280;flex-wrap:wrap">
-      <span><span style="display:inline-block;width:12px;height:12px;background:#D1D5DB;margin-right:4px;vertical-align:middle;border-radius:2px"></span>A executar</span>
-      <span><span style="display:inline-block;width:12px;height:12px;background:${p2};margin-right:4px;vertical-align:middle;border-radius:2px"></span>Em andamento</span>
-      <span><span style="display:inline-block;width:12px;height:12px;background:#065F46;margin-right:4px;vertical-align:middle;border-radius:2px"></span>Concluído</span>
-      <span><span style="display:inline-block;width:12px;height:12px;background:#F59E0B;margin-right:4px;vertical-align:middle;border-radius:2px"></span>Pausado</span>
-      <span><span style="display:inline-block;width:12px;height:12px;background:#DC2626;margin-right:4px;vertical-align:middle;border-radius:2px"></span>Atrasado</span>
-      <span><span style="display:inline-block;width:12px;height:12px;background:${p1};margin-right:4px;vertical-align:middle;border-radius:2px"></span>Hoje</span>
+    <!-- Legenda por equipe -->
+    <div style="display:flex;gap:10px;margin-top:14px;font-size:9px;color:#374151;flex-wrap:wrap;padding:8px 10px;background:#FAFAF9;border-radius:6px;border:1px solid #E5E7EB">
+      <span style="font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6B7280;margin-right:4px">Equipes:</span>
+      ${(state.equipes||[]).map(function(eq,i){ return '<span><span style="display:inline-block;width:10px;height:10px;background:'+EQ_COLORS_PASTEL[i % EQ_COLORS_PASTEL.length]+';margin-right:3px;vertical-align:middle;border-radius:2px;border:1px solid rgba(0,0,0,.1)"></span>'+esc2(eq.cod)+' '+esc2(eq.responsavel||eq.nome)+'</span>'; }).join('')}
+      <span style="margin-left:8px"><span style="display:inline-block;width:10px;height:10px;background:#FCA5A5;margin-right:3px;vertical-align:middle;border-radius:2px;border:1px solid rgba(0,0,0,.1)"></span>Atrasado</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:${p1};margin-right:3px;vertical-align:middle;border-radius:2px"></span>Hoje</span>
     </div>
   </div>
   </div>
@@ -12901,46 +12919,62 @@ function _pdfFilename(tipo){
 
 function _pdfOpts(filename){
   return {
-    margin: 0,
+    margin: [2, 0, 2, 0],
     filename: filename,
-    image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false, allowTaint: true, letterRendering: true, scrollX: 0, scrollY: 0 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
 }
 
 function gerarPDFdoRelatorio(){
   if(!_relCurrentHtml){ toast('Nenhum relatório aberto','info'); return; }
-  var filename = _pdfFilename(_relCurrentTitle);
-  toast('Gerando PDF...','info');
-  var container = document.createElement('div');
-  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;z-index:-1';
-  container.innerHTML = _relCurrentHtml;
-  document.body.appendChild(container);
-  html2pdf().set(_pdfOpts(filename)).from(container).save().then(function(){
-    document.body.removeChild(container);
-    toast('PDF salvo: ' + filename, 'success');
-  }).catch(function(e){
-    document.body.removeChild(container);
-    console.error('PDF error:', e);
-    toast('Erro ao gerar PDF — tente Imprimir','error');
-  });
+  toast('Abrindo para salvar como PDF...','info');
+  _imprimirHTML(_relCurrentHtml, _relCurrentTitle);
+}
+
+function _executarPDF(container, filename){
+  // Legacy - não mais usado
 }
 
 function gerarPDFdoHTML(htmlContent, filename){
+  // Para ZIP: gera via html2pdf se disponível, senão retorna HTML
   return new Promise(function(resolve, reject){
+    if(typeof html2pdf === 'undefined') return reject(new Error('html2pdf não disponível'));
     var container = document.createElement('div');
-    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;z-index:-1';
+    // Posiciona fora da tela mas VISÍVEL (html2canvas exige visibilidade)
+    container.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#fff;z-index:99999';
     container.innerHTML = htmlContent;
     document.body.appendChild(container);
-    html2pdf().set(_pdfOpts(filename)).from(container).outputPdf('blob').then(function(blob){
-      document.body.removeChild(container);
-      resolve(blob);
-    }).catch(function(e){
-      document.body.removeChild(container);
-      reject(e);
-    });
+    setTimeout(function(){
+      html2pdf().set(_pdfOpts(filename)).from(container).outputPdf('blob').then(function(blob){
+        document.body.removeChild(container);
+        resolve(blob);
+      }).catch(function(e){
+        document.body.removeChild(container);
+        reject(e);
+      });
+    }, 1200);
   });
+}
+
+// Abre o relatório num popup/iframe para impressão nativa (Ctrl+P → Salvar como PDF)
+function _imprimirHTML(htmlContent, titulo){
+  var fullDoc = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+(titulo||'Relatório')+'</title>'+htmlContent+'</head></html>';
+  var win = window.open('', '_blank', 'width=860,height=900');
+  if(!win){
+    toast('Permita pop-ups para gerar o PDF','error');
+    return;
+  }
+  win.document.open();
+  win.document.write(fullDoc);
+  win.document.close();
+  // Aguarda fontes e layout, depois abre diálogo de impressão
+  setTimeout(function(){
+    win.focus();
+    win.print();
+  }, 1500);
 }
 
 function fecharRelatorio(){
@@ -12986,7 +13020,8 @@ function _buildPortalCliente(){
   const narrativa = (document.getElementById('narrativa-visita')||{}).value || state.narrativa || '';
   const semana    = c.semana || 1;
   const totalMed  = c.medicoes || 7;
-  const waTel     = (c.tel_empresa||'').replace(/\\D/g,'');
+  var waTel     = (c.tel_empresa||'').replace(/\\D/g,'');
+  if(waTel && !waTel.startsWith('55')) waTel = '55' + waTel;
   const nomeGestor = c.nome_gestor || c.empresa || 'Gestor';
 
   // KPIs
@@ -16260,52 +16295,113 @@ function exportarTudoZip(){
   const c = state.config;
   if(!c.obra){ toast('Configure a obra primeiro','error'); return; }
   const semana = c.semana || 1;
-  const prefix = (c.obra||'obra').replace(/[^a-z0-9]/gi,'_').toLowerCase() + '_sem' + semana;
+  const prefix = (c.obra||'obra').replace(/[^a-z0-9]/gi,'_').toLowerCase() + '_sem' + String(semana).padStart(2,'0');
 
-  toast('Gerando ZIP com PDFs... aguarde','info');
+  toast('Gerando ZIP com todos os relatórios em PDF... aguarde','info');
 
-  // Coletar HTMLs dos relatórios
-  const htmls = [];
+  // Salvar estado atual do modal
+  var prevHtml = _relCurrentHtml;
+  var prevTitle = _relCurrentTitle;
 
-  try { const h = _buildPortalCliente(); if(h) htmls.push({ name: prefix+'_portal_cliente', html: h }); } catch(e){}
-  try { const h = _gerarRelFotograficoHTML(); if(h) htmls.push({ name: prefix+'_fotografico', html: h }); } catch(e){}
+  // Coletar HTMLs de todos os relatórios
+  var htmls = [];
 
-  // JSON sempre como texto
-  const textFiles = [];
+  // 1. Relatório Semanal Interno
   try {
-    const json = JSON.stringify(_buildExportJSON(), null, 2);
+    _relCurrentHtml = ''; _relCurrentTitle = '';
+    // Simula geração sem modal
+    _gerarRelSemanalDireto(semana);
+    if(_relCurrentHtml) htmls.push({ name: prefix+'_relatorio_semanal', html: _relCurrentHtml });
+  } catch(e){ console.warn('ZIP: semanal falhou', e); }
+
+  // 2. Relatório Semanal Cliente (Portal)
+  try { var h = _buildPortalCliente(); if(h) htmls.push({ name: prefix+'_portal_cliente', html: h }); } catch(e){}
+
+  // 3. Orçamento
+  try {
+    _relCurrentHtml = ''; _relCurrentTitle = '';
+    abrirRelatorioOrcamento();
+    if(_relCurrentHtml) htmls.push({ name: prefix+'_orcamento', html: _relCurrentHtml });
+    fecharRelatorio();
+  } catch(e){ console.warn('ZIP: orcamento falhou', e); }
+
+  // 4. Financeiro
+  try {
+    _relCurrentHtml = ''; _relCurrentTitle = '';
+    abrirRelatorioFinanceiro();
+    if(_relCurrentHtml) htmls.push({ name: prefix+'_financeiro', html: _relCurrentHtml });
+    fecharRelatorio();
+  } catch(e){ console.warn('ZIP: financeiro falhou', e); }
+
+  // 5. Gantt (período completo)
+  try {
+    _relCurrentHtml = ''; _relCurrentTitle = '';
+    _gerarGanttPDF('completo');
+    if(_relCurrentHtml) htmls.push({ name: prefix+'_gantt', html: _relCurrentHtml });
+    fecharRelatorio();
+  } catch(e){ console.warn('ZIP: gantt falhou', e); }
+
+  // 6. Fotográfico
+  try { var h2 = _gerarRelFotograficoHTML(); if(h2) htmls.push({ name: prefix+'_fotografico', html: h2 }); } catch(e){}
+
+  // Restaurar estado do modal
+  _relCurrentHtml = prevHtml;
+  _relCurrentTitle = prevTitle;
+  fecharRelatorio();
+
+  // JSON de dados
+  var textFiles = [];
+  try {
+    var json = JSON.stringify(_buildExportJSON(), null, 2);
     textFiles.push({ name: prefix+'_dados.json', content: json });
   } catch(e){}
-  const blocoEl = document.getElementById('export-atualizacao');
+  var blocoEl = document.getElementById('export-atualizacao');
   if(blocoEl && blocoEl.value.trim()){
     textFiles.push({ name: prefix+'_bloco_atualizacao.txt', content: blocoEl.value });
   }
 
-  // Gerar PDFs em paralelo
-  const pdfPromises = htmls.map(function(item){
-    return gerarPDFdoHTML(item.html, item.name+'.pdf').then(function(blob){
-      return blob.arrayBuffer().then(function(buf){
-        return { name: item.name+'.pdf', data: new Uint8Array(buf) };
+  if(!htmls.length && !textFiles.length){ toast('Nenhum arquivo para exportar','info'); return; }
+
+  toast('Convertendo '+htmls.length+' relatórios para PDF...','info');
+
+  // Gerar PDFs sequencialmente (evita sobrecarga de memória)
+  var pdfFiles = [];
+  var chain = Promise.resolve();
+  htmls.forEach(function(item){
+    chain = chain.then(function(){
+      return gerarPDFdoHTML(item.html, item.name+'.pdf').then(function(blob){
+        return blob.arrayBuffer().then(function(buf){
+          pdfFiles.push({ name: item.name+'.pdf', data: new Uint8Array(buf) });
+        });
+      }).catch(function(e){
+        console.warn('ZIP PDF falhou para '+item.name, e);
+        pdfFiles.push({ name: item.name+'.html', data: new TextEncoder().encode(item.html) });
       });
-    }).catch(function(e){
-      console.warn('ZIP PDF falhou para '+item.name, e);
-      // Fallback: incluir como HTML
-      return { name: item.name+'.html', data: new TextEncoder().encode(item.html) };
     });
   });
 
-  Promise.all(pdfPromises).then(function(pdfFiles){
-    const allFiles = [];
-    pdfFiles.forEach(function(f){ allFiles.push(f); });
+  chain.then(function(){
+    var allFiles = pdfFiles.slice();
     textFiles.forEach(function(f){ allFiles.push({ name: f.name, data: new TextEncoder().encode(f.content) }); });
-
-    if(!allFiles.length){ toast('Nenhum arquivo para exportar','info'); return; }
+    if(!allFiles.length){ toast('Nenhum arquivo gerado','info'); return; }
     _criarZipEBaixarBin(allFiles, prefix+'.zip');
-    toast('ZIP gerado com '+allFiles.length+' arquivo(s)','success');
+    toast('ZIP gerado com '+allFiles.length+' arquivo(s): '+allFiles.map(function(f){return f.name;}).join(', '),'success');
   }).catch(function(e){
     console.error('ZIP error:', e);
     toast('Erro ao gerar ZIP','error');
   });
+}
+
+// Gera relatório semanal interno sem modal de input
+function _gerarRelSemanalDireto(semNum){
+  var semEl = document.createElement('div');
+  semEl.innerHTML = '<input id="rel-sem-num" value="'+semNum+'"><input id="rel-sem-data" value="'+today()+'">';
+  semEl.id = 'modal-rel-semana';
+  semEl.style.cssText = 'position:fixed;left:-9999px;visibility:hidden';
+  document.body.appendChild(semEl);
+  try { _gerarRelSemanal(); } catch(e){}
+  var el = document.getElementById('modal-rel-semana');
+  if(el) el.remove();
 }
 
 // ZIP builder que aceita Uint8Array data diretamente (para PDFs binários)
@@ -18068,7 +18164,7 @@ checarConflitos();
           background:var(--accent);color:#fff;border:none;border-radius:8px;
           padding:13px;font-family:var(--font-display);font-size:13px;font-weight:800;cursor:pointer
         ">👁 Visualizar antes de enviar</button>
-        ${eq.telefone?`<a href="https://wa.me/${eq.telefone.replace(/\D/g,'')}?text=${encodeURIComponent('Olá '+eq.nome+'! Segue o dashboard de campo. Abra o arquivo HTML, defina as datas dos seus serviços e clique em Enviar.')}" target="_blank" style="
+        ${eq.telefone?`<a href="https://wa.me/${(eq.telefone.replace(/\D/g,'').startsWith('55')?'':'55')+eq.telefone.replace(/\D/g,'')}?text=${encodeURIComponent('Olá '+eq.nome+'! Segue o dashboard de campo. Abra o arquivo HTML, defina as datas dos seus serviços e clique em Enviar.')}" target="_blank" style="
           display:flex;align-items:center;justify-content:center;gap:8px;
           background:#25D366;color:#fff;border:none;border-radius:8px;
           padding:13px;font-family:var(--font-display);font-size:13px;font-weight:800;

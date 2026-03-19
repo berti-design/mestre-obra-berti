@@ -2099,6 +2099,9 @@ body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!import
     <button class="tab-btn" onclick="switchTab('tab-fechamento')" id="tbtn-fechamento">
       <span class="tab-icon">📤</span>Fechamento
     </button>
+    <button class="tab-btn" onclick="switchTab('tab-assistente')" id="tbtn-assistente">
+      <span class="tab-icon">🤖</span>Assistente
+    </button>
   </div>
 </div>
 
@@ -3423,6 +3426,184 @@ body.tabs-active #tab-cronograma.active{max-width:100%!important;margin:0!import
 </div>
 
 </div><!-- /tab-panel last -->
+
+<!-- TAB: ASSISTENTE — Prompts e ativações do Claude -->
+<div class="tab-panel" id="tab-assistente">
+
+<div class="sec" id="sec-assistente">
+  <div class="sec-header">
+    <div class="sec-title">Central de Prompts — Claude</div>
+    <div class="sec-subtitle">Copie o comando e cole no Claude para acionar o fluxo correto</div>
+  </div>
+  <div class="sec-body" style="padding:0 16px 16px">
+
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;padding:12px;background:var(--gray-soft);border-radius:8px;margin-bottom:16px">
+      Cada card abaixo é um <strong>ativador</strong> — copie o texto e cole no início da conversa com o Claude dentro do projeto Mestre de Obra. O Claude já tem as instruções e vai seguir o fluxo automaticamente.
+    </div>
+
+    <!-- CARD 1: ABERTURA DE OBRA -->
+    <div style="border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden" id="prompt-card-abertura">
+      <div style="padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--gray-soft)">
+        <span style="font-size:20px">🏗️</span>
+        <div style="flex:1">
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--text)">Abertura de Obra Nova</div>
+          <div style="font-size:11px;color:var(--muted)">Chat A · Gera planilha, JSON, proposta e ZIP</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="_copiarPrompt('abertura')">📋 Copiar</button>
+      </div>
+      <div style="padding:12px 16px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">QUANDO USAR:</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:10px">Cliente novo fechou contrato. Precisa abrir a obra no sistema com todos os dados estruturados.</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600">COMANDO:</div>
+        <pre id="prompt-txt-abertura" style="background:var(--surface-2,#1a1a1a);color:#a8e6a3;padding:12px;border-radius:6px;font-size:11px;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.5;overflow-x:auto">Abrir obra nova. Segue as informações do cliente:
+
+Nome da obra: [nome/apelido]
+Cliente: [razão social]
+CNPJ/CPF: [número]
+Endereço: [endereço completo da obra]
+Telefone: [telefone]
+E-mail: [e-mail]
+Valor do contrato: [valor]
+Início: [DD/MM/AAAA]
+Previsão de entrega: [DD/MM/AAAA]
+Escopo: [descrever o que será feito]
+
+Gere os 4 entregáveis: planilha, JSON, proposta HTML e ZIP.</pre>
+      </div>
+    </div>
+
+    <!-- CARD 2: DEBUG -->
+    <div style="border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden" id="prompt-card-debug">
+      <div style="padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--gray-soft)">
+        <span style="font-size:20px">🐛</span>
+        <div style="flex:1">
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--text)">Debug do Cockpit</div>
+          <div style="font-size:11px;color:var(--muted)">Corrigir erro ou comportamento inesperado</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="_copiarPrompt('debug')">📋 Copiar</button>
+      </div>
+      <div style="padding:12px 16px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">QUANDO USAR:</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:10px">Algo quebrou no cockpit — botão não funciona, relatório sai errado, tela trava, dados sumiram.</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600">COMANDO:</div>
+        <pre id="prompt-txt-debug" style="background:var(--surface-2,#1a1a1a);color:#a8e6a3;padding:12px;border-radius:6px;font-size:11px;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.5;overflow-x:auto">Bug no cockpit v[XX]. Segue o cockpit em anexo.
+
+O que aconteceu: [descrever o problema]
+Dispositivo: [celular/notebook]
+Navegador: [Chrome/Safari]
+Console: [colar mensagem de erro se tiver]
+O que fiz antes: [passos que levaram ao erro]
+
+[anexar screenshot se possível]</pre>
+      </div>
+    </div>
+
+    <!-- CARD 3: FUNCIONALIDADE NOVA -->
+    <div style="border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden" id="prompt-card-dev">
+      <div style="padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--gray-soft)">
+        <span style="font-size:20px">⚡</span>
+        <div style="flex:1">
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--text)">Funcionalidade Nova</div>
+          <div style="font-size:11px;color:var(--muted)">Implementar melhoria ou recurso no cockpit</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="_copiarPrompt('dev')">📋 Copiar</button>
+      </div>
+      <div style="padding:12px 16px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">QUANDO USAR:</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:10px">Precisa de um recurso novo ou melhoria em algo existente. Mudança visual, novo relatório, automação.</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600">COMANDO:</div>
+        <pre id="prompt-txt-dev" style="background:var(--surface-2,#1a1a1a);color:#a8e6a3;padding:12px;border-radius:6px;font-size:11px;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.5;overflow-x:auto">Melhoria no cockpit v[XX]. Segue o cockpit em anexo.
+
+O que preciso: [descrever a funcionalidade]
+Problema que resolve: [por que isso é necessário]
+Onde no sistema: [qual aba, qual seção, qual relatório]
+
+[anexar cockpit_vXX.html]</pre>
+      </div>
+    </div>
+
+    <!-- CARD 4: PROPOSTA / DOCUMENTO TÉCNICO -->
+    <div style="border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden" id="prompt-card-proposta">
+      <div style="padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--gray-soft)">
+        <span style="font-size:20px">📄</span>
+        <div style="flex:1">
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--text)">Proposta / Documento Técnico</div>
+          <div style="font-size:11px;color:var(--muted)">Proposta comercial, memorial, regularização</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="_copiarPrompt('proposta')">📋 Copiar</button>
+      </div>
+      <div style="padding:12px 16px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">QUANDO USAR:</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:10px">Precisa gerar documento profissional para apresentar ao cliente — proposta, memorial descritivo, laudo, regularização.</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600">COMANDO:</div>
+        <pre id="prompt-txt-proposta" style="background:var(--surface-2,#1a1a1a);color:#a8e6a3;padding:12px;border-radius:6px;font-size:11px;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.5;overflow-x:auto">Gerar [proposta comercial / memorial descritivo / documento de regularização] para:
+
+Cliente: [nome/razão social]
+Endereço: [endereço do imóvel]
+Tipo: [reforma / construção / regularização]
+Escopo: [descrever o que será feito]
+Valor: [se aplicável]
+Observações: [detalhes específicos]
+
+Entregar como HTML profissional no padrão Berti.</pre>
+      </div>
+    </div>
+
+    <!-- CARD 5: ANÁLISE / AUDITORIA -->
+    <div style="border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden" id="prompt-card-auditoria">
+      <div style="padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--gray-soft)">
+        <span style="font-size:20px">🔍</span>
+        <div style="flex:1">
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--text)">Análise / Auditoria do Sistema</div>
+          <div style="font-size:11px;color:var(--muted)">Diagnóstico, auditoria técnica, recomendações</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="_copiarPrompt('auditoria')">📋 Copiar</button>
+      </div>
+      <div style="padding:12px 16px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">QUANDO USAR:</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:10px">Quer uma revisão completa do sistema, identificar problemas, ou receber recomendações de melhoria.</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600">COMANDO:</div>
+        <pre id="prompt-txt-auditoria" style="background:var(--surface-2,#1a1a1a);color:#a8e6a3;padding:12px;border-radius:6px;font-size:11px;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.5;overflow-x:auto">Auditoria do cockpit v[XX]. Segue o cockpit e o MASTER.md em anexo.
+
+Foco: [relatórios / código / fluxo de campo / tudo]
+Contexto: [o que motivou a auditoria — problema específico?]
+
+Quero diagnóstico com bugs, inconsistências e recomendações priorizadas.</pre>
+      </div>
+    </div>
+
+    <!-- CARD 6: INSTRUÇÕES DO PROJETO -->
+    <div style="border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden" id="prompt-card-instrucoes">
+      <div style="padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--gray-soft)">
+        <span style="font-size:20px">📋</span>
+        <div style="flex:1">
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--text)">Instruções do Projeto Claude</div>
+          <div style="font-size:11px;color:var(--muted)">Cole nas instruções do projeto no Claude.ai</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="_copiarPrompt('instrucoes')">📋 Copiar</button>
+      </div>
+      <div style="padding:12px 16px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">PARA QUE SERVE:</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:10px">Texto completo para colar nas <strong>Instruções do Projeto</strong> no Claude.ai. Faz o Claude já conhecer todo o sistema ao abrir qualquer conversa.</div>
+        <pre id="prompt-txt-instrucoes" style="background:var(--surface-2,#1a1a1a);color:#a8e6a3;padding:12px;border-radius:6px;font-size:10px;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.5;overflow-x:auto;max-height:200px;overflow-y:auto">Você é o assistente do sistema Mestre de Obra da Berti Construtora. Gestor: Evandro Luiz Duarte. Resp. técnica: Jéssica Berti Martins (CAU A129520-9).
+
+SISTEMA: Cockpit HTML single-file (~19.800 linhas) no GitHub Pages. Stack: cockpit.html → Apps Script Sync → Google Sheets + Cloudflare Worker. Fotos via ImgBB (zero base64). calcPctGeral() é a função canônica. Relatórios do cliente nunca mostram códigos internos. MASTER.md é referência absoluta.
+
+TEMPLATES:
+- BUG: perguntar versão, dispositivo, navegador, console, passos. Editar com str_replace, validar braces, entregar arquivo.
+- DEV: entender problema real, verificar código existente, implementar mínimo, validar sync/sanitize, entregar arquivo.
+- DOC: identidade Berti (#1a3a2a), dados da empresa, HTML profissional, tom consultoria.
+
+REGRAS: direto sem enrolação. Não inventar módulo desnecessário. Menos cliques em campo, mais qualidade na entrega. Entregar arquivo pronto, não trechos. Nunca sobrescrever fórmulas da planilha.
+
+EMPRESA: Berti Construtora LTDA · CNPJ 59.622.624/0001-93 · Jéssica Berti Martins CAU A129520-9 · (41) 9183-6651 · berti@curitibaconstrutora.com.br · PIX 59.622.624/0001-93</pre>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /tab-panel assistente -->
 </main>
 
 <!-- MODAL FORNECEDOR NOVO (D66) -->
@@ -3832,6 +4013,10 @@ function sanitizeState(s){
   if(!s.planejamento)              s.planejamento = { objetivo:'', tarefas:[] };
   if(!s.presenca_historico)        s.presenca_historico = {};
   if(!s.diario_historico)          s.diario_historico = {};
+  if(!s.snapshots)                 s.snapshots = {};
+
+  // v48 — Garantir servico_ref em fotos antigas
+  s.fotos.forEach(function(f){ if(!f.servico_ref) f.servico_ref = ''; });
 
   // Migração: copiar dados legados de state.diario para diario_historico
   var _diasOrd = ['seg','ter','qua','qui','sex','sab','dom'];
@@ -4151,9 +4336,9 @@ async function autoSyncNow(manual){
 
 function _prepararPayloadSync(){
   var s = JSON.parse(JSON.stringify(state));
-  // Remove base64 das fotos — manter apenas URLs da nuvem
+  // Remove base64 das fotos — manter URLs + metadados (v48: preservar servico_ref e titulo_rel)
   if(s.fotos && s.fotos.length){
-    s.fotos = s.fotos.map(function(f){ return {url:f.url||'',thumb:f.thumb||'',data:f.data||'',legenda:f.legenda||'',ambiente:f.ambiente||'',cloud:f.cloud||false}; });
+    s.fotos = s.fotos.map(function(f){ return {url:f.url||'',thumb:f.thumb||'',data:f.data||'',legenda:f.legenda||'',ambiente:f.ambiente||'',cloud:f.cloud||false,titulo_rel:f.titulo_rel||'',servico_ref:f.servico_ref||''}; });
   }
   // Limitar notas e visitas
   if(s.notas && s.notas.length > 20) s.notas = s.notas.slice(-20);
@@ -5743,10 +5928,28 @@ function _buildSrvCell(s,idx,collapsed){
   var eq=state.equipes.find(function(e){return e.cod===s.equipe;});
   var eqLabel=eq?(eq.responsavel||eq.nome):(s.equipe||'');
 
+  // v48 — Datas em texto legível (sempre visível)
+  var _iniD=s.data_inicio||''; var _fimD=s.data_fim||'';
+  var _iniTxt='', _fimTxt='', _durTxt='';
+  if(_iniD){
+    var _d1=_iniD.includes('/')?_iniD:_iniD.split('-').reverse().join('/');
+    _iniTxt=_d1.substring(0,5); // DD/MM
+    if(_fimD){
+      var _d2=_fimD.includes('/')?_fimD:_fimD.split('-').reverse().join('/');
+      _fimTxt=_d2.substring(0,5);
+      // Calcular duração
+      var _di=new Date((_iniD.includes('/')?_iniD.split('/').reverse().join('-'):_iniD)+'T00:00:00');
+      var _df=new Date((_fimD.includes('/')?_fimD.split('/').reverse().join('-'):_fimD)+'T00:00:00');
+      if(!isNaN(_di)&&!isNaN(_df)) _durTxt=Math.max(1,Math.round((_df-_di)/86400000)+1)+'d';
+    }
+  }
+  var periodoLabel=_iniTxt?(_iniTxt+(_fimTxt&&_fimTxt!==_iniTxt?' — '+_fimTxt:'')+(_durTxt?' · '+_durTxt:'')):'';
+
   var h='<div style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="gtToggleRow('+idx+')">';
   h+='<div style="flex:1;min-width:0">';
   h+='<span style="font-size:8px;font-weight:800;color:#fff;background:var(--primary);padding:1px 4px;border-radius:3px;letter-spacing:.3px">'+esc(s.cod)+'</span>';
   h+='<div style="font-size:11px;font-weight:700;color:var(--ink,#111);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(s.descricao)+'">'+esc(s.descricao)+'</div>';
+  if(periodoLabel) h+='<div style="font-size:9px;color:var(--muted);margin-top:1px;font-family:var(--font-mono,monospace)">'+periodoLabel+'</div>';
   h+='</div>';
   h+='<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">';
   h+='<input type="number" min="0" max="100" step="5" value="'+pct+'" onchange="ganttUpdatePct('+idx+',this.value)" onclick="event.stopPropagation()" style="width:40px;padding:2px;border:1.5px solid var(--border);border-radius:4px;font-size:11px;font-weight:700;text-align:center;background:var(--bg);color:var(--ink,#111)">';
@@ -5761,8 +5964,8 @@ function _buildSrvCell(s,idx,collapsed){
   if(eqLabel) h+='<div style="margin-top:4px;font-size:9px;color:var(--muted)">'+esc(eqLabel)+'</div>';
   var iniVal=s.data_inicio||''; var fimVal=s.data_fim||'';
   h+='<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px">';
-  h+='<input type="date" value="'+(iniVal.includes('/')?iniVal.split('/').reverse().join('-'):iniVal)+'" onchange="ganttUpdateData('+idx+',\x27data_inicio\x27,this.value)" onclick="event.stopPropagation()" style="font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;color:var(--ink,#111);background:var(--bg)">';
-  h+='<input type="date" value="'+(fimVal.includes('/')?fimVal.split('/').reverse().join('-'):fimVal)+'" onchange="ganttUpdateData('+idx+',\x27data_fim\x27,this.value)" onclick="event.stopPropagation()" style="font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;color:var(--ink,#111);background:var(--bg)">';
+  h+='<div style="display:flex;gap:4px;align-items:center"><span style="font-size:8px;color:var(--muted);min-width:30px">Início</span><input type="date" value="'+(iniVal.includes('/')?iniVal.split('/').reverse().join('-'):iniVal)+'" onchange="ganttUpdateData('+idx+',\x27data_inicio\x27,this.value)" onclick="event.stopPropagation()" style="flex:1;font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;color:var(--ink,#111);background:var(--bg)"></div>';
+  h+='<div style="display:flex;gap:4px;align-items:center"><span style="font-size:8px;color:var(--muted);min-width:30px">Fim</span><input type="date" value="'+(fimVal.includes('/')?fimVal.split('/').reverse().join('-'):fimVal)+'" onchange="ganttUpdateData('+idx+',\x27data_fim\x27,this.value)" onclick="event.stopPropagation()" style="flex:1;font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;color:var(--ink,#111);background:var(--bg)"></div>';
   h+='<button onclick="ganttAdicionarEtapa(event,'+idx+')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--muted);cursor:pointer;text-align:left">+ Etapa</button>';
   h+='</div>';
 
@@ -7184,7 +7387,21 @@ async function processarFotoComUpload(file, fotoIndex){
   // 1. Compress
   const compressed = await compressImage(file, 1200, 0.75);
 
-  // 2. Add to state immediately with base64 (for instant preview)
+  // v48 — Upload ANTES de salvar no state (zero base64 no localStorage)
+  const imgbbKey = getImgbbKey();
+  if(!imgbbKey){
+    _mostrarAvisoImgbb();
+    return;
+  }
+
+  toast('📤 Enviando foto...','info');
+  const result = await uploadToImgbb(compressed);
+  if(!result){
+    toast('⚠️ Upload falhou — verifique sua conexão e tente novamente.', 'error');
+    return;
+  }
+
+  // 2. Upload OK — salvar no state COM URL (sem base64)
   var _fotoDateEl = document.getElementById('foto-data-selecionada');
   var _fotoDateVal = _fotoDateEl && _fotoDateEl.value ? _fotoDateEl.value : '';
   var _dataFoto = _fotoDateVal ? _fotoDateVal.split('-').reverse().join('/') : today();
@@ -7192,40 +7409,17 @@ async function processarFotoComUpload(file, fotoIndex){
     legenda: '',
     ambiente: '',
     data: _dataFoto,
-    titulo_rel: _dataFoto,
-    src: compressed,
-    url: '',
-    thumb: '',
-    cloud: false
+    titulo_rel: '',
+    servico_ref: '',
+    src: result.url,
+    url: result.url,
+    thumb: result.thumb || result.url,
+    cloud: true
   };
   state.fotos.push(foto);
-  const idx = state.fotos.length - 1;
   renderFotos();
   saveState();
-
-  // 3. Try upload to ImgBB
-  const imgbbKey = getImgbbKey();
-  if(imgbbKey){
-    // Mark as uploading
-    const thumbEl = document.getElementById('foto-thumb-'+idx);
-    if(thumbEl) thumbEl.classList.add('uploading');
-
-    const result = await uploadToImgbb(compressed);
-    if(result){
-      // Success: replace base64 with URL
-      state.fotos[idx].url = result.url;
-      state.fotos[idx].thumb = result.thumb;
-      state.fotos[idx].src = result.url; // use URL as src
-      state.fotos[idx].cloud = true;
-      toast('📷 Foto enviada para nuvem', 'success');
-    } else {
-      // Failed: keep base64 locally
-      state.fotos[idx].cloud = false;
-      toast('⚠️ Upload falhou — foto salva localmente', 'warning');
-    }
-    renderFotos();
-    saveState();
-  }
+  toast('📷 Foto registrada', 'success');
 }
 
 // ───────────────────────────────────────────────
@@ -7696,6 +7890,11 @@ async function handleFotoDrop(e){
 }
 
 async function processarFoto(file){
+  // v48 — ImgBB OBRIGATÓRIO: sem nuvem não sobe foto
+  if(!getImgbbKey()){
+    _mostrarAvisoImgbb();
+    return;
+  }
   // HEIC/HEIF do iPhone → converter para JPEG antes de processar
   var isHeic = /\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif';
   if(isHeic){
@@ -7714,6 +7913,53 @@ async function processarFoto(file){
   await processarFotoComUpload(file);
 }
 
+// v48 — Modal bloqueante: ImgBB obrigatório
+// v48 — Copiar prompts da aba Assistente
+function _copiarPrompt(tipo){
+  const el = document.getElementById('prompt-txt-'+tipo);
+  if(!el) return;
+  const texto = el.textContent;
+  navigator.clipboard.writeText(texto).then(function(){
+    toast('Comando copiado — cole no Claude','success');
+  }).catch(function(){
+    // Fallback para mobile
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    toast('Texto selecionado — copie manualmente','info');
+  });
+}
+
+function _mostrarAvisoImgbb(){
+  if(document.getElementById('modal-imgbb-obrigatorio')) return;
+  const m = document.createElement('div');
+  m.id = 'modal-imgbb-obrigatorio';
+  m.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML = `<div style="background:var(--surface,#fff);border-radius:12px;padding:24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="font-size:32px;text-align:center;margin-bottom:12px">📷</div>
+    <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--text,#111);text-align:center;margin-bottom:8px">ImgBB obrigatório para fotos</div>
+    <div style="font-size:13px;color:var(--muted,#666);text-align:center;line-height:1.6;margin-bottom:20px">
+      Fotos locais ocupam o espaço do navegador e travam o app.<br>
+      Configure a chave ImgBB para que as fotos sejam enviadas diretamente para a nuvem.
+    </div>
+    <div style="background:var(--bg,#f5f3ef);border-radius:8px;padding:12px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Como configurar</div>
+      <div style="font-size:12px;color:var(--text);line-height:1.6">
+        1. Acesse <strong>api.imgbb.com</strong> e crie uma conta gratuita<br>
+        2. Copie a chave da API<br>
+        3. Cole em <strong>Aba Obra → Integrações → API ImgBB</strong>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="document.getElementById('modal-imgbb-obrigatorio').remove()" style="flex:1;padding:10px;border:1.5px solid var(--border,#ddd);border-radius:8px;background:transparent;font-size:12px;cursor:pointer;color:var(--muted)">Fechar</button>
+      <button onclick="document.getElementById('modal-imgbb-obrigatorio').remove();scrollToSec('sec-config')" style="flex:1;padding:10px;border:none;border-radius:8px;background:var(--primary,#0D2016);color:#fff;font-size:12px;font-weight:700;cursor:pointer">Configurar agora →</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
 var _heic2anyLoaded = false;
 function _loadHeic2Any(){
   if(_heic2anyLoaded && typeof heic2any !== 'undefined') return Promise.resolve();
@@ -7728,6 +7974,41 @@ function _loadHeic2Any(){
 
 function updateFoto(idx, field, val){
   state.fotos[idx][field] = val;
+  // v48 — Auto-gerar titulo_rel quando serviço ou ambiente muda
+  if(field === 'servico_ref' || field === 'ambiente'){
+    state.fotos[idx].titulo_rel = _gerarTituloPadrao(state.fotos[idx]);
+    // Atualizar legenda visual se existir
+    const legEl = document.querySelector('#foto-thumb-'+idx+' .foto-titulo-display');
+    if(legEl) legEl.textContent = state.fotos[idx].titulo_rel;
+  }
+  // v48 — Presença automática: vincular foto a serviço → marcar equipe presente no dia
+  if(field === 'servico_ref' && val){
+    const srv = (state.servicos||[]).find(s=>s.cod===val);
+    if(srv && srv.equipe){
+      const foto = state.fotos[idx];
+      const fotoData = foto.data || '';
+      if(fotoData){
+        // Converter data da foto (DD/MM/AAAA) para dia da semana
+        const parts = fotoData.split('/');
+        if(parts.length >= 2){
+          const year = parts[2] || new Date().getFullYear();
+          const dt = new Date(year+'-'+parts[1]+'-'+parts[0]+'T12:00:00');
+          if(!isNaN(dt)){
+            const dowMap = {1:'seg',2:'ter',3:'qua',4:'qui',5:'sex',6:'sab',0:'dom'};
+            const diaSigla = dowMap[dt.getDay()];
+            if(diaSigla && state.diario && state.diario[diaSigla]){
+              if(!state.diario[diaSigla].presenca) state.diario[diaSigla].presenca = {};
+              const atual = state.diario[diaSigla].presenca[srv.equipe];
+              if(!atual || atual === 'nd'){
+                state.diario[diaSigla].presenca[srv.equipe] = 'sim';
+                toast('Presença de '+(((state.equipes||[]).find(e=>e.cod===srv.equipe)||{}).responsavel||srv.equipe)+' registrada ('+fotoData+')','success');
+              }
+            }
+          }
+        }
+      }
+    }
+  }
   saveState();
 }
 
@@ -7798,13 +8079,41 @@ function renderFotos(){
       var f=item.f, i=item.i;
       var isCloud = f.cloud || (f.url && f.url.startsWith('http'));
       var imgSrc = f.url || f.src || '';
+      // v48 — Serviços ativos na data da foto para o seletor
+      var fotoDateISO = (f.data||'').includes('/') ? f.data.split('/').reverse().join('-') : f.data;
+      var srvsAtivos = (state.servicos||[]).filter(function(s){
+        if((s.pct_atual||0)>=100) return false; // já concluído
+        var ini = s.data_inicio||'';
+        var fim = s.data_fim||ini;
+        if(!ini) return (s.pct_atual||0)>0; // sem data mas em andamento
+        var iniISO = ini.includes('/')?ini.split('/').reverse().join('-'):ini;
+        var fimISO = fim.includes('/')?fim.split('/').reverse().join('-'):fim;
+        return fotoDateISO >= iniISO && fotoDateISO <= fimISO;
+      });
+      // Se nenhum ativo na data, mostrar todos em andamento
+      if(!srvsAtivos.length) srvsAtivos = (state.servicos||[]).filter(function(s){ return (s.pct_atual||0)>0 && (s.pct_atual||0)<100; });
+      // Adicionar também todos os não-concluídos como opção extra
+      var srvsExtra = (state.servicos||[]).filter(function(s){
+        return (s.pct_atual||0)<100 && !srvsAtivos.find(function(a){return a.cod===s.cod;});
+      });
+
+      var srvOptions = '<option value="">Vincular serviço...</option>'
+        + (srvsAtivos.length ? '<optgroup label="Em andamento">' + srvsAtivos.map(function(s){ return '<option value="'+esc(s.cod)+'"'+(f.servico_ref===s.cod?' selected':'')+'>'+esc(s.descricao||s.cod)+'</option>'; }).join('') + '</optgroup>' : '')
+        + (srvsExtra.length ? '<optgroup label="Outros serviços">' + srvsExtra.slice(0,15).map(function(s){ return '<option value="'+esc(s.cod)+'"'+(f.servico_ref===s.cod?' selected':'')+'>'+esc(s.descricao||s.cod)+'</option>'; }).join('') + '</optgroup>' : '');
+
+      // v48 — Título gerado para exibição
+      var tituloDisplay = f.titulo_rel || _gerarTituloPadrao(f);
+
       html += '<div class="foto-thumb" id="foto-thumb-'+i+'">'
         +'<img src="'+imgSrc+'" loading="lazy" alt="'+esc(f.legenda||'Foto')+'">'
         +'<button class="foto-thumb-remove" onclick="removeFoto('+i+')">✕</button>'
         +(isCloud?'<div class="foto-cloud-badge">☁ NUVEM</div>':'<div class="foto-local-badge" title="Clique para enviar" onclick="retryUpload('+i+')" style="cursor:pointer">📱 LOCAL</div>')
         +'<div class="foto-thumb-info">'
-        +'<input type="text" value="'+esc(f.legenda||'')+'" placeholder="Legenda..." onchange="updateFoto('+i+',\'legenda\',this.value)" style="background:transparent;border:none;color:#fff;width:100%;font-size:11px;padding:0;outline:none">'
-        +'<div style="display:flex;gap:4px;margin-top:3px;align-items:center">'
+        +'<div class="foto-titulo-display" style="font-size:10px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'+(tituloDisplay!==f.data?esc(tituloDisplay):'')+'</div>'
+        +'<select onchange="updateFoto('+i+',\'servico_ref\',this.value)" style="background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:10px;padding:2px 3px;border-radius:3px;width:100%;margin-bottom:2px">'
+        +srvOptions
+        +'</select>'
+        +'<div style="display:flex;gap:4px;align-items:center">'
         +'<select onchange="updateFoto('+i+',\'ambiente\',this.value)" style="background:rgba(0,0,0,.4);border:none;color:#fff;font-size:10px;padding:1px 3px;border-radius:3px;flex:1">'
         +'<option value="">Ambiente...</option>'
         +setores.map(function(s2){ return '<option value="'+s2+'"'+(f.ambiente===s2?' selected':'')+'>'+s2+'</option>'; }).join('')
@@ -8167,9 +8476,9 @@ function limparSemana(){
   state.servicos = state.servicos.map(s=>({...s, status_anterior: s.status_atual, pct_anterior: s.pct_atual, observacao:''}));
   state.equipes = state.equipes.map(e=>({...e, presenca:{seg:'nd',ter:'nd',qua:'nd',qui:'nd',sex:'nd'}, nota:''}));
   state.config.semana = (state.config.semana||1) + 1;
-  state.pagamentos = [];
+  // v48 — Pagamentos são da OBRA: preservar. Pendências não resolvidas persistem.
+  state.pendencias = (state.pendencias||[]).filter(p => p.status !== 'RESOLVIDO' && p.status !== 'CONCLUÍDO');
   state.fotos = [];
-  state.pendencias = [];
   state.materiais = [];
   state.notas = [];
   state.narrativa = '';
@@ -8246,6 +8555,26 @@ function confirmarAvancarSemana(){
   const novaFim = (document.getElementById('avs-fim')||{}).value || '';
   document.getElementById('modal-avanca-semana')?.remove();
 
+  // ── v48: SNAPSHOT SEMANAL — gravar histórico de % para relatório mensal ──
+  if(!state.snapshots) state.snapshots = {};
+  const semAtual = state.config.semana || 1;
+  state.snapshots['S'+semAtual] = {
+    semana: semAtual,
+    data: new Date().toISOString().slice(0,10),
+    pctGeral: calcPctGeral(),
+    servicos: (state.servicos||[]).map(s => ({
+      cod: s.cod,
+      descricao: s.descricao,
+      pct: s.pct_atual || 0,
+      status: s.status_atual || '',
+      valor: s.valor || 0
+    })),
+    concluidos: (state.servicos||[]).filter(s=>(s.pct_atual||0)>=100).length,
+    totalSrv: (state.servicos||[]).length,
+    totalFotos: (state.fotos||[]).length,
+    totalPago: (state.pagamentos||[]).filter(p=>p.tipo==='ENTRADA').reduce((a,p)=>a+(parseFloat(p.valor)||0),0)
+  };
+
   // Arquivar presença da semana no histórico permanente
   if(!state.presenca_historico) state.presenca_historico = {};
   var _datas = getDiasData(0);
@@ -8272,9 +8601,10 @@ function confirmarAvancarSemana(){
   if(novaFim) state.config.periodo_fim = novaFim;
 
   // Limpar dados semanais
-  state.pagamentos = [];
+  // v48 — Pagamentos são da OBRA, não da semana: preservar
+  // v48 — Pendências não resolvidas persistem entre semanas
+  state.pendencias = (state.pendencias||[]).filter(p => p.status !== 'RESOLVIDO' && p.status !== 'CONCLUÍDO');
   state.fotos = [];
-  state.pendencias = [];
   state.materiais = [];
   state.notas = [];
   state.narrativa = '';
@@ -11136,7 +11466,7 @@ function aplicarExtracoes(){
     if(_pp.length===2) _isoHoje = new Date().getFullYear()+'-'+_pp[1]+'-'+_pp[0];
   }
   if(!_isoHoje) _isoHoje = new Date().toISOString().slice(0,10);
-  console.log('[APLICAR] Data da visita:', _isoHoje, '| Dia selecionado:', diarioDiaSelecionado);
+  console.debug('[APLICAR] Data da visita:', _isoHoje, '| Dia selecionado:', diarioDiaSelecionado);
 
   try {
 
@@ -11173,7 +11503,7 @@ function aplicarExtracoes(){
         cronoMudou = true;
       }
       if(cronoMudou) cronoUpdates++;
-      console.log('[APLICAR]', srv.cod, '| pct:', pctAnterior+'→'+pctNovo, '| inicio:', srv.data_inicio, '| fim:', srv.data_fim, '| dias:', (srv.dias_marcados||[]).length);
+      console.debug('[APLICAR]', srv.cod, '| pct:', pctAnterior+'→'+pctNovo, '| inicio:', srv.data_inicio, '| fim:', srv.data_fim, '| dias:', (srv.dias_marcados||[]).length);
       count++;
     }
   });
@@ -11300,7 +11630,7 @@ function aplicarExtracoes(){
       if(mudou) sweepCount++;
     }
   });
-  if(sweepCount > 0) console.log('[APLICAR] Varredura: '+sweepCount+' serviços com datas preenchidas');
+  if(sweepCount > 0) console.debug('[APLICAR] Varredura: '+sweepCount+' serviços com datas preenchidas');
 
   // Re-render TUDO
   renderServicos();
@@ -11676,33 +12006,34 @@ function abrirRelatorioFotografico(){
   const fotos = state.fotos || [];
   const semana = c.semana || 1;
 
-  // v48 — Auto-gerar títulos contextuais para fotos sem titulo_rel
+  // v48 — _autoTituloFoto agora é global (definida junto com _gerarTituloPadrao)
   const srvs = state.servicos || [];
-  function _autoTituloFoto(f){
-    if(f.titulo_rel) return f.titulo_rel;
-    if(f.legenda && f.legenda !== 'Sem legenda') return f.legenda;
-    // Tentar encontrar serviços em andamento na data da foto
-    if(f.data && srvs.length){
-      const fotoData = f.data.includes('/') ? f.data.split('/').reverse().join('-') : f.data;
-      const emAndNaData = srvs.filter(s=>{
-        const pct = s.pct_atual||0;
-        if(pct<=0) return false;
-        const ini = s.data_inicio||'';
-        const fim = s.data_fim||'';
-        return ini && fim && fotoData >= ini && fotoData <= fim;
-      });
-      if(emAndNaData.length){
-        // Retornar os 2 primeiros serviços em andamento
-        return emAndNaData.slice(0,2).map(s=>(s.descricao||'').replace(/\s*[-—]\s*Salão\s*\d+/i,'')).join(' / ');
-      }
-    }
-    return '';
-  }
 
+  // v48 — Agrupamento: serviço vinculado > ambiente > 'Geral'
   const grupos = {};
-  fotos.forEach(f => { const k = f.ambiente || f.grupo || 'Geral'; (grupos[k] = grupos[k]||[]).push(f); });
+  fotos.forEach(f => {
+    let k = 'Geral';
+    if(f.servico_ref){
+      const srv = srvs.find(s=>s.cod===f.servico_ref);
+      if(srv) k = srv.descricao || srv.categoria || f.servico_ref;
+    } else if(f.ambiente && f.ambiente !== 'Geral'){
+      k = f.ambiente;
+    } else if(f.grupo){
+      k = f.grupo;
+    }
+    (grupos[k] = grupos[k]||[]).push(f);
+  });
 
-  const fotosHtml = Object.keys(grupos).length ? Object.entries(grupos).map(([grp, fts]) => `
+  // Ordenar grupos: serviços vinculados primeiro, 'Geral' por último
+  const grupoKeys = Object.keys(grupos).sort((a,b) => {
+    if(a === 'Geral') return 1;
+    if(b === 'Geral') return -1;
+    return 0;
+  });
+
+  const fotosHtml = grupoKeys.length ? grupoKeys.map(grp => {
+    const fts = grupos[grp];
+    return `
     <div style="break-inside:avoid;margin-bottom:28px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;border-bottom:2px solid var(--preto);padding-bottom:5px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.5px">${esc2(grp)}</div>
@@ -11723,7 +12054,7 @@ function abrirRelatorioFotografico(){
         </div>`;
         }).join('')}
       </div>
-    </div>`).join('')
+    </div>`; }).join('')
   : `<div style="padding:40px;text-align:center;color:var(--cinza);border:1px solid var(--linha);font-size:13px">Nenhuma foto registrada para esta semana.</div>`;
 
   const cabHeader = buildBertiHeader({
@@ -11734,7 +12065,7 @@ function abrirRelatorioFotografico(){
       {l:'Contratante', v: esc2(c.razao_cliente||c.cliente||'—'), s: c.cnpj_cliente?`CNPJ ${esc2(c.cnpj_cliente)}`:''},
       {l:'Semana', v: `Semana ${semana} / ${c.medicoes||7}`},
       {l:'Período', v: periodo},
-      {l:'Total de fotos', v: `${fotos.length} foto${fotos.length!==1?'s':''} · ${Object.keys(grupos).length} ambiente${Object.keys(grupos).length!==1?'s':''}`}
+      {l:'Total de fotos', v: `${fotos.length} foto${fotos.length!==1?'s':''} · ${grupoKeys.length} grupo${grupoKeys.length!==1?'s':''}`}
     ]
   });
 
@@ -11958,8 +12289,15 @@ function _gerarGanttPDF(modo){
     var eqObj = (state.equipes||[]).find(function(e){return e.cod===s.equipe;});
     var eqNomeCliente = eqObj ? esc2(eqObj.responsavel||eqObj.nome||eqObj.especialidade||'') : '';
 
+    // v48 — Datas em texto para leitura direta
+    var iniTxt = ini ? (String(ini.getDate()).padStart(2,'0')+'/'+String(ini.getMonth()+1).padStart(2,'0')) : '';
+    var fimTxt = fim ? (String(fim.getDate()).padStart(2,'0')+'/'+String(fim.getMonth()+1).padStart(2,'0')) : '';
+    var durDias = ini && fim ? Math.max(1, Math.round((fim-ini)/86400000)+1) : '';
+    var periodoTxt = iniTxt ? (iniTxt+(fimTxt && fimTxt!==iniTxt ? ' — '+fimTxt : '')+((durDias && durDias > 1) ? ' · '+durDias+'d' : '')) : '—';
+
     return '<tr style="border-bottom:1px solid #E8E8E8;background:'+rowBg+'">'
       +'<td style="padding:5px 8px;min-width:200px;max-width:260px;word-wrap:break-word;white-space:normal;border-right:1px solid #E0E0E0;background:'+rowBg+'"><div style="font-size:10px;font-weight:600;color:#333;line-height:1.4">'+esc2(s.descricao)+'</div>'+(eqNomeCliente?'<div style="font-size:8px;color:#AAAAAA;margin-top:1px">'+eqNomeCliente+'</div>':'')+'</td>'
+      +'<td style="padding:5px 6px;text-align:center;border-right:1px solid #E0E0E0;background:'+rowBg+';white-space:nowrap"><div style="font-family:monospace;font-size:8px;color:#777;line-height:1.3">'+periodoTxt+'</div></td>'
       +'<td style="padding:5px 6px;text-align:center;border-right:1px solid #E0E0E0;background:'+rowBg+'">'+stBadge+'</td>'
       +'<td style="padding:5px 6px;text-align:center;font-family:monospace;font-size:9px;font-weight:700;color:'+(pct>=100?'#2E7D32':'#555')+';border-right:1px solid #BDBDBD;background:'+rowBg+'">'+pct+'%</td>'
       +cells+'</tr>';
@@ -11976,7 +12314,7 @@ function _gerarGanttPDF(modo){
   var tblBody = '';
   allSorted.forEach(function(s){ tblBody += srvRow(s); });
   if(srvSemDatas.length){
-    tblBody += '<tr><td colspan="'+(3+dias.length)+'" style="padding:6px 8px;background:#EEEEEE;color:#888;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Sem data definida <span style="opacity:.5">('+srvSemDatas.length+')</span></td></tr>';
+    tblBody += '<tr><td colspan="'+(4+dias.length)+'" style="padding:6px 8px;background:#EEEEEE;color:#888;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Sem data definida <span style="opacity:.5">('+srvSemDatas.length+')</span></td></tr>';
     srvSemDatas.forEach(function(s){ tblBody += srvRow(s); });
   }
 
@@ -12017,8 +12355,8 @@ function _gerarGanttPDF(modo){
     <div style="overflow-x:auto">
       <table style="border-collapse:collapse;font-size:10px;width:max-content;border:1px solid #BDBDBD">
         <thead>
-          <tr><th style="min-width:200px;border-bottom:1px solid #E0E0E0;background:#F5F5F5"></th><th style="min-width:70px;border-bottom:1px solid #E0E0E0;background:#F5F5F5"></th><th style="min-width:40px;border-bottom:1px solid #E0E0E0;background:#F5F5F5"></th>${monHeaders}</tr>
-          <tr><th style="padding:5px 8px;text-align:left;background:${p1};color:#fff;font-size:9px;font-weight:600;border-right:1px solid rgba(255,255,255,.15)">Serviço</th><th style="padding:5px 6px;text-align:center;background:${p1};color:#fff;font-size:9px;font-weight:600;border-right:1px solid rgba(255,255,255,.15)">Status</th><th style="padding:5px 6px;text-align:center;background:${p1};color:#fff;font-size:9px;font-weight:600;border-right:1px solid #BDBDBD">%</th>${dayHeaders}</tr>
+          <tr><th style="min-width:200px;border-bottom:1px solid #E0E0E0;background:#F5F5F5"></th><th style="min-width:80px;border-bottom:1px solid #E0E0E0;background:#F5F5F5"></th><th style="min-width:70px;border-bottom:1px solid #E0E0E0;background:#F5F5F5"></th><th style="min-width:40px;border-bottom:1px solid #E0E0E0;background:#F5F5F5"></th>${monHeaders}</tr>
+          <tr><th style="padding:5px 8px;text-align:left;background:${p1};color:#fff;font-size:9px;font-weight:600;border-right:1px solid rgba(255,255,255,.15)">Serviço</th><th style="padding:5px 6px;text-align:center;background:${p1};color:#fff;font-size:9px;font-weight:600;border-right:1px solid rgba(255,255,255,.15)">Período</th><th style="padding:5px 6px;text-align:center;background:${p1};color:#fff;font-size:9px;font-weight:600;border-right:1px solid rgba(255,255,255,.15)">Status</th><th style="padding:5px 6px;text-align:center;background:${p1};color:#fff;font-size:9px;font-weight:600;border-right:1px solid #BDBDBD">%</th>${dayHeaders}</tr>
         </thead>
         <tbody>${tblBody}</tbody>
       </table>
@@ -12110,11 +12448,7 @@ function _gerarRelSemanal(){
   const totalSrv = srvs.length;
   const concluidos = srvs.filter(s=>s.status_atual==='CONCLUÍDO').length;  const emAnd = srvs.filter(s=>s.status_atual==='EM ANDAMENTO').length;
   const aExec = srvs.filter(s=>(s.pct_atual||0)===0).length;
-  const totalVal = srvs.reduce((a,s)=>a+(s.valor||0),0);
-  let pctGeral = 0;
-  if(totalVal>0) pctGeral = srvs.reduce((a,s)=>a+(s.pct_atual||0)*(s.valor||0),0)/totalVal;
-  else if(totalSrv>0) pctGeral = srvs.reduce((a,s)=>a+(s.pct_atual||0),0)/totalSrv;
-  pctGeral = Math.round(pctGeral);
+  const pctGeral = calcPctGeral();
 
   const totalEnt = pags.filter(p=>p.tipo==='ENTRADA').reduce((a,p)=>a+(parseFloat(p.valor)||0),0);
   const totalSai = pags.filter(p=>p.tipo==='SAÍDA').reduce((a,p)=>a+(parseFloat(p.valor)||0),0);
@@ -12281,11 +12615,7 @@ async function gerarRelatorioSemanalCliente(){
   const fotos = state.fotos || [];
   const narrativaOriginal = (document.getElementById('narrativa-visita')||{}).value || state.narrativa || '';
 
-  const totalVal = srvs.reduce((a,s)=>a+(s.valor||0),0);
-  let pctGeral = 0;
-  if(totalVal>0) pctGeral = srvs.reduce((a,s)=>a+(s.pct_atual||0)*(s.valor||0),0)/totalVal;
-  else if(srvs.length>0) pctGeral = srvs.reduce((a,s)=>a+(s.pct_atual||0),0)/srvs.length;
-  pctGeral = Math.round(pctGeral);
+  const pctGeral = calcPctGeral();
 
   // v48 — Narrativa para o relatório do cliente — REGISTRO TÉCNICO COM CONTEXTO ESTRATÉGICO
   let narrativa = '';
@@ -12350,6 +12680,7 @@ async function gerarRelatorioSemanalCliente(){
 
   const emAnd = srvs.filter(s=>(s.pct_atual||0)>0&&(s.pct_atual||0)<100).length;
   const concluidos = srvs.filter(s=>(s.pct_atual||0)>=100).length;
+  const totalVal = srvs.reduce((a,s)=>a+(s.valor||0),0);
   const valContrato = c.valor_contrato || totalVal || 0;
   const totalPago = pags.filter(p=>p.tipo==='ENTRADA').reduce((a,p)=>a+(parseFloat(p.valor)||0),0);
   const emAberto = valContrato - totalPago;
@@ -12389,13 +12720,18 @@ async function gerarRelatorioSemanalCliente(){
                '<span class="bdg bc">A executar</span>';
     // v48 — Descrição limpa (sem código SRV-)
     const descLimpa = esc2((s.descricao||'').replace(/^SRV-\d+\s*[-—]\s*/i,''));
+    // v48 — Período em texto
+    const _ini = s.data_inicio ? fmtDate(s.data_inicio) : '';
+    const _fim = s.data_fim ? fmtDate(s.data_fim) : '';
+    const periodoSrv = _ini ? (_ini + (_fim && _fim !== _ini ? ' a ' + _fim : '')) : '—';
     return `<tr>
       <td><div class="tnm">${descLimpa}</div></td>
       ${temLocal ? `<td><div class="tlc">${esc2(s.local||s.ambiente||'—')}</div></td>` : `<td><div class="tlc">${_nomeEquipeCliente(s)}</div></td>`}
+      <td style="font-size:10px;color:var(--cinza);font-family:monospace;white-space:nowrap">${periodoSrv}</td>
       <td>${st}</td>
       <td><div class="prow"><div class="pbg"><div class="pfg${pct>=100?' done':''}" style="width:${pct}%"></div></div><span class="mono">${pct}%</span></div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="4" style="color:var(--cinza);text-align:center;padding:16px">Nenhum serviço com avanço nesta semana</td></tr>`;
+  }).join('') : `<tr><td colspan="5" style="color:var(--cinza);text-align:center;padding:16px">Nenhum serviço com avanço nesta semana</td></tr>`;
 
   // Próxima semana — serviços programados com datas do cronograma
   // v48 — Fotos: resumo compacto com fotos-destaque (máx 4) em vez de galeria completa
@@ -12567,16 +12903,22 @@ async function gerarRelatorioSemanalCliente(){
 
   const proxSemLabel = `S${semana+1} · ${proxSeg.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} a ${proxDom.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}`;
 
-  const proxSemRows = srvProxSemana.length ? srvProxSemana.map(s => `<tr>
+  const proxSemRows = srvProxSemana.length ? srvProxSemana.map(s => {
+    const _pIni = s.data_inicio ? fmtDate(s.data_inicio) : '';
+    const _pFim = s.data_fim ? fmtDate(s.data_fim) : '';
+    const _pPeriodo = _pIni ? (_pIni + (_pFim && _pFim !== _pIni ? ' a ' + _pFim : '')) : '—';
+    return `<tr>
     <td style="padding:6px 10px;font-size:11px;font-weight:600">${esc2(s.descricao||'')}</td>
     <td style="padding:6px 10px;font-size:11px;color:var(--cinza)">${_eqNomeLimpo(s)}</td>
+    <td style="padding:6px 10px;font-size:10px;color:var(--cinza);font-family:monospace;white-space:nowrap">${_pPeriodo}</td>
     <td style="padding:6px 10px;font-size:11px;color:var(--cinza)">${s.pct_atual||0}%</td>
-  </tr>`).join('') : `<tr><td colspan="3" style="padding:12px;color:var(--cinza);text-align:center;font-size:11px">Nenhum serviço programado para a próxima semana</td></tr>`;
+  </tr>`;
+  }).join('') : `<tr><td colspan="4" style="padding:12px;color:var(--cinza);text-align:center;font-size:11px">Nenhum serviço programado para a próxima semana</td></tr>`;
 
   const proxSemHtml = `
   <div class="sec"><span class="sec-n">${pontosCount > 0 ? '04' : '03'}</span><span class="sec-t">Planejamento Próxima Semana</span><span style="font-size:10px;color:var(--cinza);margin-left:8px;font-weight:400">${proxSemLabel}</span></div>
   <table class="tb">
-    <thead><tr><th>Serviço</th><th>Equipe</th><th>Atual</th></tr></thead>
+    <thead><tr><th>Serviço</th><th>Equipe</th><th>Período</th><th>Atual</th></tr></thead>
     <tbody>${proxSemRows}</tbody>
   </table>`;
 
@@ -12613,6 +12955,72 @@ async function gerarRelatorioSemanalCliente(){
   </div>
 </div>` : '';
 
+  // ═══ MACRO-CRONOGRAMA — Visão por fases para o cliente ═══
+  const MACRO_FASES = [
+    { nome:'Preparo', cats:['Preliminares','Demolições'], cor:'#4A5568' },
+    { nome:'Infraestrutura', cats:['Infraestrutura','Hidráulica','Elétrica','Ar-condicionado'], cor:'#2B6CB0' },
+    { nome:'Estrutura', cats:['Alvenaria','Drywall / Forro','PPCI / Incêndio','Construções e Regularizações','Cobertura','Estruturas Especiais','Impermeabilização'], cor:'#6B46C1' },
+    { nome:'Acabamento', cats:['Pintura','Revestimento'], cor:'#B7791F' },
+    { nome:'Instalações', cats:['Marcenaria','Serralheria','Vidraçaria','Projetos'], cor:'#2F855A' },
+    { nome:'Entrega', cats:['Limpeza','Administração'], cor:'#C53030' }
+  ];
+
+  const macroFases = MACRO_FASES.map(fase => {
+    const srvsF = srvs.filter(s => fase.cats.includes(s.categoria));
+    if(!srvsF.length) return null;
+    const total = srvsF.length;
+    const concl = srvsF.filter(s => (s.pct_atual||0) >= 100).length;
+    const pctF = total > 0 ? Math.round(srvsF.reduce((a,s) => a + (s.pct_atual||0), 0) / total) : 0;
+    // Datas
+    const datas = srvsF.filter(s => s.data_inicio).map(s => s.data_inicio.includes('/') ? s.data_inicio.split('/').reverse().join('-') : s.data_inicio).sort();
+    const datasFim = srvsF.filter(s => s.data_fim).map(s => s.data_fim.includes('/') ? s.data_fim.split('/').reverse().join('-') : s.data_fim).sort();
+    const primeiraData = datas.length ? datas[0] : '';
+    const ultimaData = datasFim.length ? datasFim[datasFim.length-1] : '';
+    const iniLabel = primeiraData ? primeiraData.split('-').reverse().slice(0,2).join('/') : '';
+    const fimLabel = ultimaData ? ultimaData.split('-').reverse().slice(0,2).join('/') : '';
+    const status = pctF >= 100 ? 'done' : pctF > 0 ? 'progress' : 'pending';
+    return { nome:fase.nome, cor:fase.cor, total, concl, pct:pctF, iniLabel, fimLabel, status };
+  }).filter(Boolean);
+
+  const macroHtml = macroFases.length >= 2 ? `
+  <div style="margin:20px 0 24px;padding:20px 24px;background:var(--fundo,#FAFAF8);border:1px solid var(--linha,#E5E0D8);border-radius:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--cinza,#888)">Cronograma por Fase</div>
+      <div style="font-size:10px;color:var(--cinza)">${macroFases.filter(f=>f.status==='done').length} de ${macroFases.length} fases concluídas</div>
+    </div>
+    <div style="display:flex;align-items:stretch;gap:0;position:relative">
+      ${macroFases.map((f, fi) => {
+        const bgCard = f.status==='done' ? f.cor+'18' : f.status==='progress' ? f.cor+'12' : '#F4F4F4';
+        const borderCard = f.status==='done' ? f.cor+'40' : f.status==='progress' ? f.cor+'30' : '#E0E0E0';
+        const textColor = f.status==='done' ? f.cor : f.status==='progress' ? f.cor : '#AAAAAA';
+        const barBg = f.status==='done' ? f.cor : f.status==='progress' ? f.cor : '#D4D4D4';
+        const statusIcon = f.status==='done' ? '<span style="font-size:11px;font-weight:800;color:'+f.cor+'">✓</span>' :
+                           f.status==='progress' ? '<span style="font-size:9px;font-weight:700;color:'+f.cor+'">'+f.pct+'%</span>' :
+                           '<span style="font-size:9px;color:#BBB">—</span>';
+        const connector = fi < macroFases.length-1 ? '<div style="flex-shrink:0;width:16px;display:flex;align-items:center;justify-content:center"><div style="width:12px;height:1.5px;background:'+(f.status==='done'?f.cor+'60':'#D4D4D4')+'"></div></div>' : '';
+        return `<div style="flex:1;min-width:0;display:flex;align-items:stretch">
+          <div style="flex:1;padding:10px 12px;background:${bgCard};border:1px solid ${borderCard};border-radius:6px;display:flex;flex-direction:column;justify-content:space-between">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <div style="font-size:10px;font-weight:700;color:${textColor};text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc2(f.nome)}</div>
+                ${statusIcon}
+              </div>
+              <div style="height:3px;background:${f.status==='pending'?'#E8E8E8':barBg+'25'};border-radius:2px;overflow:hidden;margin-bottom:4px"><div style="height:100%;width:${f.pct}%;background:${barBg};border-radius:2px;transition:width .3s"></div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-family:monospace;font-size:8px;color:${f.status==='pending'?'#CCC':textColor+'BB'}">${f.iniLabel||''}${f.fimLabel&&f.fimLabel!==f.iniLabel?' — '+f.fimLabel:''}</div>
+              <div style="font-size:8px;color:${f.status==='pending'?'#CCC':textColor+'99'}">${f.concl}/${f.total}</div>
+            </div>
+          </div>
+          ${connector}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>` : '';
+
+  // Renumerar seções dinamicamente
+  let secNum = 1;
+
   const body = `${getBertiCSS(p1,p2)}<body>
 <div class="doc">
 ${cabHeader}
@@ -12638,20 +13046,22 @@ ${finBandHtml}
   </div>
 </div>
 <div class="corpo">
-  <div class="sec"><span class="sec-n">01</span><span class="sec-t">Resumo da Semana</span></div>
+  <div class="sec"><span class="sec-n">0${secNum}</span><span class="sec-t">Resumo da Semana</span></div>
   <div class="narr">${narrativa ? esc2(narrativa) : 'Sem narrativa registrada para esta semana.'}</div>
 
-  <div class="sec"><span class="sec-n">02</span><span class="sec-t">Serviços Executados</span></div>
+  ${macroHtml}
+
+  <div class="sec"><span class="sec-n">0${++secNum}</span><span class="sec-t">Serviços Executados</span></div>
   <table class="tb">
-    <thead><tr><th>Serviço</th><th>${temLocal ? 'Local' : 'Equipe'}</th><th>Status</th><th>Progresso</th></tr></thead>
+    <thead><tr><th>Serviço</th><th>${temLocal ? 'Local' : 'Equipe'}</th><th>Período</th><th>Status</th><th>Progresso</th></tr></thead>
     <tbody>${srvRows}</tbody>
   </table>
 
-  ${pontosHtml}
+  ${pontosHtml ? pontosHtml.replace(/sec-n">0\d/,'sec-n">0'+(++secNum)) : ''}
 
-  ${proxSemHtml}
+  ${proxSemHtml.replace(/sec-n">\d+/,'sec-n">0'+(++secNum))}
 
-  <div class="sec"><span class="sec-n">${secFotos}</span><span class="sec-t">Registro Fotográfico</span></div>
+  <div class="sec"><span class="sec-n">0${++secNum}</span><span class="sec-t">Registro Fotográfico</span></div>
   ${fotosHtml}
 </div>
 <div class="rdp">
@@ -12679,10 +13089,7 @@ function abrirRelatorioOrcamento(){
   const executado = srvs.reduce((a,s)=>a+(s.valor||0)*(s.pct_atual||0)/100,0);
   const taxaAdm = c.taxa_admin||15;
 
-  const totalVal = srvs.reduce((a,s)=>a+(s.valor||0),0);
-  let pctGeral = 0;
-  if(totalVal>0) pctGeral = srvs.reduce((a,s)=>a+(s.pct_atual||0)*(s.valor||0),0)/totalVal;
-  pctGeral = Math.round(pctGeral);
+  const pctGeral = calcPctGeral();
 
   // ── Agrupar serviços por categoria ──
   const catOrder = ['Preliminares','Demolições','Infraestrutura','Alvenaria','Construções e Regularizações','Impermeabilização','Pintura','Hidráulica','Elétrica','Ar-condicionado','Drywall / Forro','Revestimento','Cobertura','Serralheria','Estruturas Especiais','PPCI / Incêndio','Projetos','Marcenaria','Limpeza','Administração'];
@@ -13735,12 +14142,9 @@ function _buildPortalCliente(){
   const concluidos=srvs.filter(s=>(s.pct_atual||0)>=100).length;
   const emAnd=srvs.filter(s=>(s.pct_atual||0)>0&&(s.pct_atual||0)<100).length;
   const aExec=srvs.filter(s=>(s.pct_atual||0)===0).length;
-  const totalVal=srvs.reduce((a,s)=>a+(s.valor||0),0);
-  let pctGeral=0;
-  if(totalVal>0) pctGeral=srvs.reduce((a,s)=>a+(s.pct_atual||0)*(s.valor||0),0)/totalVal;
-  else if(totalSrv>0) pctGeral=srvs.reduce((a,s)=>a+(s.pct_atual||0),0)/totalSrv;
-  pctGeral=Math.round(pctGeral);
+  const pctGeral = calcPctGeral();
 
+  const totalVal=srvs.reduce((a,s)=>a+(s.valor||0),0);
   const valContrato=parseFloat(c.valor_contrato)||totalVal||0;
   const entradas=pags.filter(p=>p.tipo==='ENTRADA').reduce((a,p)=>a+(parseFloat(p.valor)||0),0);
   const saidas=pags.filter(p=>p.tipo==='SAÍDA'||p.tipo==='SAIDA').reduce((a,p)=>a+(parseFloat(p.valor)||0),0);
@@ -14296,13 +14700,10 @@ function _buildPortalGitHub(){
   const concluidos = srvs.filter(s=>(s.pct_atual||0)>=100).length;
   const emAnd = srvs.filter(s=>(s.pct_atual||0)>0&&(s.pct_atual||0)<100).length;
   const aExec = srvs.filter(s=>(s.pct_atual||0)===0).length;
-  const totalVal = srvs.reduce((a,s)=>a+(s.valor||0),0);
-  let pctGeral = 0;
-  if(totalVal>0) pctGeral = srvs.reduce((a,s)=>a+(s.pct_atual||0)*(s.valor||0),0)/totalVal;
-  else if(totalSrv>0) pctGeral = srvs.reduce((a,s)=>a+(s.pct_atual||0),0)/totalSrv;
-  pctGeral = Math.round(pctGeral);
+  const pctGeral = calcPctGeral();
 
   // Financeiro
+  const totalVal = srvs.reduce((a,s)=>a+(s.valor||0),0);
   const valContrato = parseFloat(c.valor_contrato)||totalVal||0;
   const entradas = pags.filter(p=>p.tipo==='ENTRADA').reduce((a,p)=>a+(parseFloat(p.valor)||0),0);
   const pctPago = valContrato>0 ? Math.min(100,Math.round(entradas/valContrato*100)) : 0;
@@ -14392,8 +14793,13 @@ function _buildPortalGitHub(){
     var eqP = (state.equipes||[]).find(function(e){return e.cod===s.equipe;});
     var eqNm = eqP ? esc2(eqP.responsavel||eqP.nome||eqP.especialidade||'') : '';
 
+    // v48 — Datas em texto para leitura direta
+    var iniTxtP = ini ? (String(ini.getDate()).padStart(2,'0')+'/'+String(ini.getMonth()+1).padStart(2,'0')) : '';
+    var fimTxtP = fim ? (String(fim.getDate()).padStart(2,'0')+'/'+String(fim.getMonth()+1).padStart(2,'0')) : '';
+    var periodoTxtP = iniTxtP ? (iniTxtP+(fimTxtP && fimTxtP!==iniTxtP ? ' — '+fimTxtP : '')) : '';
+
     return '<tr style="border-bottom:1px solid #E8E8E8;background:'+rbg+'">'
-      +'<td style="padding:5px 8px;min-width:180px;max-width:240px;white-space:normal;word-wrap:break-word;border-right:1px solid #E0E0E0;background:'+rbg+';position:sticky;left:0;z-index:1"><div style="font-size:10px;font-weight:600;color:#333;line-height:1.3">'+esc2(s.descricao)+'</div>'+(eqNm?'<div style="font-size:8px;color:#AAA;margin-top:1px">'+eqNm+'</div>':'')+'</td>'
+      +'<td style="padding:5px 8px;min-width:180px;max-width:240px;white-space:normal;word-wrap:break-word;border-right:1px solid #E0E0E0;background:'+rbg+';position:sticky;left:0;z-index:1"><div style="font-size:10px;font-weight:600;color:#333;line-height:1.3">'+esc2(s.descricao)+'</div>'+(eqNm?'<div style="font-size:8px;color:#AAA;margin-top:1px">'+eqNm+(periodoTxtP?' · '+periodoTxtP:'')+'</div>':'<div style="font-size:8px;color:#AAA;margin-top:1px">'+periodoTxtP+'</div>')+'</td>'
       +'<td style="padding:5px 4px;text-align:center;border-right:1px solid #E0E0E0;background:'+rbg+'"><span style="display:inline-block;padding:2px 5px;font-size:7px;font-weight:600;background:'+stBg+';color:'+stClr+';border-radius:3px;text-transform:uppercase;letter-spacing:.3px">'+st+'</span></td>'
       +'<td style="padding:5px 4px;text-align:center;font-family:monospace;font-size:9px;font-weight:700;color:'+(pct>=100?'#2E7D32':'#555')+';border-right:1px solid #CCC;background:'+rbg+'">'+pct+'%</td>'
       +cells+'</tr>';
@@ -14666,10 +15072,7 @@ function gerarDashboardInterativo() {
   const emAnd = srvs.filter(s => s.status_atual === 'EM ANDAMENTO').length;
   const aExec = srvs.filter(s => s.status_atual === 'A EXECUTAR').length;
   const totalVal = srvs.reduce((a, s) => a + (s.valor || 0), 0);
-  let pctGeral = 0;
-  if (totalVal > 0) pctGeral = srvs.reduce((a, s) => a + (s.pct_atual || 0) * (s.valor || 0), 0) / totalVal;
-  else if (totalSrv > 0) pctGeral = srvs.reduce((a, s) => a + (s.pct_atual || 0), 0) / totalSrv;
-  pctGeral = Math.round(pctGeral);
+  const pctGeral = calcPctGeral();
 
   const taxaAdmin = c.taxa_admin || 15;
   const valorContrato = c.valor_contrato || totalVal || 0;
@@ -14825,7 +15228,7 @@ function gerarDashboardInterativo() {
         <div class="bar-label">${esc2(cat)}</div>
         <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v.valor / maxValCat * 100)}%"></div></div>
         <div class="bar-val">R$ ${fmtNum(v.valor)}</div>
-        <div style="width:30px;text-align:right;font-size:10px;color:var(--muted)">${Math.round(v.valor / totalVal * 100)}%</div>
+        <div style="width:30px;text-align:right;font-size:10px;color:var(--muted)">${totalVal > 0 ? Math.round(v.valor / totalVal * 100) : 0}%</div>
       </div>`).join('')}
     </div>
 
@@ -16027,52 +16430,91 @@ function detectarPresencaIrregular(){
 // ═══════════════════════════════════════════════════════════════════════
 async function gerarMensagemWhatsApp(){
   const c = state.config;
-  if(!c.telefone_cliente){ toast('Configure o telefone do cliente na Seção 1','error'); return; }
-
-  const proxyUrl  = getSyncScript();
-  const directKey = getApiKey();
-  const temIA     = proxyUrl || directKey;
-
-  if(!temIA){
-    // Sem IA — template simples
-    const pct = calcPctGeral();
-    const msg = `Olá! Segue atualização da obra ${c.obra||''}.\n\nSemana ${c.semana||1} — Avanço geral: ${pct}%\n\nQualquer dúvida, estou à disposição.\n\n${c.nome_gestor||c.empresa||''}`;
-    const tel = c.telefone_cliente.replace(/\D/g,'');
-    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
-    return;
-  }
-
-  toast('Gerando mensagem via IA...','info');
-  const pendUrg = state.pendencias.filter(p=>p.status!=='RESOLVIDA'&&p.prioridade==='urgente').length;
+  const srvs = state.servicos || [];
   const pct = calcPctGeral();
-  const totalPago  = state.pagamentos.filter(p=>p.tipo==='ENTRADA').reduce((a,p)=>a+(p.valor||0),0);
-  const totalSaida = state.pagamentos.filter(p=>p.tipo==='SAIDA').reduce((a,p)=>a+(p.valor||0),0);
+  const semana = c.semana || 1;
 
-  const prompt = `Gere mensagem de WhatsApp do gestor ${esc(c.nome_gestor||c.empresa||'gestor')} para o cliente ${esc(c.cliente||'')} sobre a obra "${esc(c.obra||'')}".
+  // ── v48: Montar mensagem estruturada com dados reais ──
+  const concluidos = srvs.filter(s=>(s.pct_atual||0)>=100);
+  const emAnd = srvs.filter(s=>(s.pct_atual||0)>0&&(s.pct_atual||0)<100);
+  const totalFotos = (state.fotos||[]).length;
 
-DADOS — Semana ${c.semana||1}:
-- Avanço: ${pct}%
-- Pendências urgentes: ${pendUrg}
-- Recebido: R$ ${fmtNum(totalPago)}
-- Registro: ${(state.narrativa||'').substring(0,300)}
+  // Delta da semana (serviços que avançaram)
+  const avancaram = srvs.filter(s=>(s.pct_atual||0)>(s.pct_anterior||0));
+  const concluidosSemana = avancaram.filter(s=>(s.pct_atual||0)>=100);
+  const emAndSemana = avancaram.filter(s=>(s.pct_atual||0)<100);
 
-REGRAS ABSOLUTAS:
-- Máximo 4 linhas. Direto ao ponto.
-- Tom: profissional, confiante, sem bajulação.
-- PROIBIDO: "esperamos que esteja bem", "gostaríamos de informar", "ficamos felizes", "seguimos à disposição", emojis excessivos.
-- Formato: Saudação curta (1 palavra) + dados da semana + próximo passo concreto + nome do gestor.
-- SEM asteriscos, SEM markdown.
-- Exemplo de tom correto: "Bom dia. Obra Badida semana 3 — avanço 45%. Elétrica concluída, forro iniciando segunda. Evandro."`;
-
-  try {
-    const msg = await callClaude({ messages:[{role:'user',content:prompt}], max_tokens:300 });
-    if(msg){
-      const tel = c.telefone_cliente.replace(/\D/g,'');
-      window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
+  // SPI
+  let spiTexto = '';
+  if(c.periodo_ini && (c.periodo_fim||c.data_fim)){
+    const ni = new Date((c.periodo_ini.includes('/')?c.periodo_ini.split('/').reverse().join('-'):c.periodo_ini)+'T00:00:00');
+    const ff = c.periodo_fim||c.data_fim;
+    const nf = new Date((ff.includes('/')?ff.split('/').reverse().join('-'):ff)+'T00:00:00');
+    if(!isNaN(ni)&&!isNaN(nf)){
+      const dt = Math.max(1,Math.round((nf-ni)/86400000));
+      const dd = Math.max(0,Math.round((new Date()-ni)/86400000));
+      const prev = Math.min(100,Math.round(dd/dt*100));
+      const dev = pct - prev;
+      spiTexto = dev >= 0 ? ' · Acima do previsto' : ' · Atenção: abaixo do previsto';
     }
-  } catch(e){
-    toast('Erro: '+e.message,'error');
   }
+
+  // Próxima semana
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const dow = hoje.getDay();
+  const proxSeg = new Date(hoje); proxSeg.setDate(hoje.getDate()+(dow===0?1:8-dow));
+  const proxDom = new Date(proxSeg); proxDom.setDate(proxSeg.getDate()+6);
+  const psISO = proxSeg.toISOString().slice(0,10);
+  const pdISO = proxDom.toISOString().slice(0,10);
+  const proxSrv = srvs.filter(s=>{
+    if((s.pct_atual||0)>=100) return false;
+    if(s.dias_marcados&&s.dias_marcados.length) return s.dias_marcados.some(d=>d>=psISO&&d<=pdISO);
+    const ini=s.data_inicio||''; const fim=s.data_fim||ini; if(!ini) return false;
+    const iISO=ini.includes('/')?ini.split('/').reverse().join('-'):ini;
+    const fISO=fim.includes('/')?fim.split('/').reverse().join('-'):fim;
+    return iISO<=pdISO&&fISO>=psISO;
+  });
+
+  // Montar mensagem
+  let msg = `${c.obra||'Obra'} — Semana ${semana}\n\n`;
+  msg += `Avanço geral: ${pct}%${spiTexto}\n`;
+
+  if(concluidosSemana.length){
+    msg += `Concluídos: ${concluidosSemana.map(s=>(s.descricao||'').replace(/\s*[-—]\s*Salão\s*\d+/i,'')).join(', ')}\n`;
+  }
+  if(emAndSemana.length){
+    msg += `Em andamento: ${emAndSemana.slice(0,4).map(s=>(s.descricao||'').replace(/\s*[-—]\s*Salão\s*\d+/i,'')+ ' ('+s.pct_atual+'%)').join(', ')}\n`;
+  }
+  if(proxSrv.length){
+    msg += `Foco próxima semana: ${proxSrv.slice(0,3).map(s=>(s.descricao||'').replace(/\s*[-—]\s*Salão\s*\d+/i,'')).join(', ')}\n`;
+  }
+
+  msg += `\nRelatórios em anexo`;
+  if(totalFotos > 0) msg += ` · ${totalFotos} fotos`;
+  msg += `\n\n${c.nome_gestor||c.empresa||'Berti Construtora'} · ${c.telefone||c.tel_empresa||''}`;
+
+  // ── Modal com preview editável + botão copiar + botão WhatsApp ──
+  const modal = document.createElement('div');
+  modal.id = 'modal-wa-msg';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `<div style="background:var(--surface,#fff);border-radius:12px;padding:20px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--text,#111);margin-bottom:4px">💬 Mensagem para o cliente</div>
+    <div style="font-size:11px;color:var(--muted,#666);margin-bottom:12px">Edite se quiser, depois copie ou envie direto.</div>
+    <textarea id="wa-msg-preview" style="width:100%;min-height:200px;padding:12px;border:1.5px solid var(--border,#ddd);border-radius:8px;font-size:13px;font-family:var(--font-body);line-height:1.6;resize:vertical">${msg.replace(/</g,'&lt;')}</textarea>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="navigator.clipboard.writeText(document.getElementById('wa-msg-preview').value).then(()=>toast('Copiado!','success'))" style="flex:1;padding:10px;border:1.5px solid var(--border);border-radius:8px;background:transparent;font-size:12px;font-weight:700;cursor:pointer">📋 Copiar</button>
+      ${c.telefone_cliente ? `<button onclick="_enviarWaMsg()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#25D366;color:#fff;font-size:12px;font-weight:700;cursor:pointer">💬 Abrir WhatsApp</button>` : `<span style="flex:1;padding:10px;text-align:center;font-size:11px;color:var(--muted)">Configure o tel. do cliente</span>`}
+    </div>
+    <button onclick="document.getElementById('modal-wa-msg').remove()" style="margin-top:8px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;font-size:11px;color:var(--muted);cursor:pointer">Fechar</button>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function _enviarWaMsg(){
+  const msg = document.getElementById('wa-msg-preview').value;
+  const tel = (state.config.telefone_cliente||'').replace(/\D/g,'');
+  if(tel && msg) window.open('https://wa.me/55'+tel+'?text='+encodeURIComponent(msg),'_blank');
+  document.getElementById('modal-wa-msg')?.remove();
 }
 
 
@@ -17953,32 +18395,72 @@ function _buildExportJSON(){
 // TAREFA 2 — EDITOR DE TÍTULOS DO RELATÓRIO FOTOGRÁFICO
 // ═══════════════════════════════════════════════════════════════════════
 function _gerarTituloPadrao(foto){
+  // v48 — Prioridade: serviço vinculado > ambiente > data
+  if(foto.servico_ref){
+    const srv = (state.servicos||[]).find(s=>s.cod===foto.servico_ref);
+    if(srv){
+      const desc = (srv.descricao||'').replace(/\s*[-—]\s*(Salão|Sala|Cozinha|Banheiro)\s*\d*/i,'');
+      const amb = foto.ambiente || srv.ambiente || srv.local || '';
+      return amb ? desc + ' — ' + amb : desc;
+    }
+  }
   const amb = foto.ambiente || foto.grupo || 'Geral';
   const data = foto.data || today();
   return amb + ' — ' + data;
 }
 
+// v48 — Título automático contextual: usa serviço vinculado ou serviços em andamento na data
+function _autoTituloFoto(f){
+  if(f.titulo_rel && f.titulo_rel !== f.data) return f.titulo_rel;
+  if(f.servico_ref) return _gerarTituloPadrao(f);
+  if(f.legenda && f.legenda !== 'Sem legenda') return f.legenda;
+  // Fallback: serviços em andamento na data da foto
+  const srvs = state.servicos || [];
+  if(f.data && srvs.length){
+    const fotoData = f.data.includes('/') ? f.data.split('/').reverse().join('-') : f.data;
+    const emAndNaData = srvs.filter(s=>{
+      const pct = s.pct_atual||0;
+      if(pct<=0) return false;
+      const ini = s.data_inicio||'';
+      const fim = s.data_fim||'';
+      return ini && fim && fotoData >= ini && fotoData <= fim;
+    });
+    if(emAndNaData.length){
+      return emAndNaData.slice(0,2).map(s=>(s.descricao||'').replace(/\s*[-—]\s*Salão\s*\d+/i,'')).join(' / ');
+    }
+  }
+  return '';
+}
+
 function abrirEditorTitulosFotos(){
   const fotos = state.fotos || [];
   if(!fotos.length){ toast('Nenhuma foto registrada','info'); return; }
+  const srvs = state.servicos || [];
 
   // Garantir titulo_rel em todas as fotos
   fotos.forEach(function(f){
     if(!f.titulo_rel) f.titulo_rel = _gerarTituloPadrao(f);
   });
 
+  // v48 — Opções de serviço para vincular
+  const srvOpts = srvs.filter(s=>(s.pct_atual||0)<100).map(s => '<option value="'+esc2(s.cod)+'">'+esc2(s.descricao||s.cod)+'</option>').join('');
+
   let html = `<div style="max-width:600px;margin:0 auto;padding:16px">
     <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--primary);margin-bottom:4px">✏️ Títulos do Relatório Fotográfico</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">Edite os títulos que aparecerão em cada foto no relatório. Padrão: "Ambiente — Data".</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">Vincule cada foto a um serviço para gerar títulos automáticos, ou edite manualmente.</div>
     <div style="display:flex;flex-direction:column;gap:10px" id="editor-titulos-fotos">`;
 
   fotos.forEach(function(f, i){
     const thumb = f.url || f.src || '';
-    html += `<div style="display:flex;align-items:center;gap:10px;background:var(--gray-soft);border-radius:8px;padding:8px 10px">
-      <div style="width:56px;height:42px;border-radius:6px;overflow:hidden;background:#ddd;flex-shrink:0">
+    html += `<div style="display:flex;align-items:flex-start;gap:10px;background:var(--gray-soft);border-radius:8px;padding:8px 10px">
+      <div style="width:56px;height:42px;border-radius:6px;overflow:hidden;background:#ddd;flex-shrink:0;margin-top:4px">
         ${thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999">📷</div>`}
       </div>
       <div style="flex:1">
+        <select id="foto-srv-${i}" onchange="document.getElementById('foto-titulo-${i}').value=_gerarTituloPadrao(Object.assign({},state.fotos[${i}],{servico_ref:this.value}))" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;margin-bottom:4px;background:var(--surface)">
+          <option value="">Vincular serviço...</option>
+          ${srvOpts.replace('value="'+esc2(f.servico_ref||'')+'"', 'value="'+esc2(f.servico_ref||'')+'" selected')}
+        </select>
         <input type="text" id="foto-titulo-${i}" value="${esc2(f.titulo_rel||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font-body)">
         <div style="font-size:9px;color:var(--muted);margin-top:2px;font-family:var(--font-mono)">${esc2(f.ambiente||'Geral')} · ${esc2(f.data||'')}</div>
       </div>
@@ -17998,11 +18480,13 @@ function abrirEditorTitulosFotos(){
 function salvarTitulosFotos(){
   const fotos = state.fotos || [];
   fotos.forEach(function(f, i){
-    const el = document.getElementById('foto-titulo-' + i);
-    if(el) f.titulo_rel = el.value.trim() || _gerarTituloPadrao(f);
+    const titleEl = document.getElementById('foto-titulo-' + i);
+    const srvEl = document.getElementById('foto-srv-' + i);
+    if(titleEl) f.titulo_rel = titleEl.value.trim() || _gerarTituloPadrao(f);
+    if(srvEl && srvEl.value) f.servico_ref = srvEl.value;
   });
   saveState();
-  toast('Títulos salvos!', 'success');
+  toast('Títulos e vínculos salvos!', 'success');
   fecharModalRel();
 }
 

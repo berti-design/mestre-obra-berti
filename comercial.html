@@ -512,7 +512,7 @@ const SB_URL    = 'https://tdylutdfzgtcfyhynenk.supabase.co';
 const SB_KEY    = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkeWx1dGRmemd0Y2Z5aHluZW5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyODQxMjcsImV4cCI6MjA4ODg2MDEyN30.k44CAV8O8AGhq4lzy-Ms5CF6JsW2fgMqLEegKb4K-pg';
 const AI_URL    = 'https://anthropic-proxy.berti-b52.workers.dev/v1/messages';
 const AI_MDL    = 'claude-sonnet-4-20250514';
-const STORE     = 'comercial_berti_v3';
+const STORE     = 'comercial_berti_v4';
 const DIAS      = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const CI        = {whatsapp:'💬',email:'📧',indicacao:'🤝',anuncio:'📢',telefone:'📞'};
 const TL        = {lead:'LEAD',follow_up:'FOLLOW-UP',proposta:'PROPOSTA',cobranca:'COBRANÇA',negociacao:'NEGOCIAÇÃO',info:'INFO'};
@@ -558,12 +558,8 @@ let mic = null, micOn = false, timerIv = null, editLeadId = null, expDays = 0;
 function stDef() {
   return {
     conversas: [],
-    leads: [
-      {id:'l-001',contato:'Joel Bernardi',empresa:'TMK/Badida',canal:'whatsapp',estagio:'negociacao',tipo:'follow_up',urgencia:'alta',valor_est:500000,resumo:'Salão 67%. Irritado com marcenaria.',acao:'Responder cronograma',prazo:'',criado:isoHoje(),atualizado:isoNow(),arquivado:false},
-      {id:'l-002',contato:'Isadora Arq',empresa:'New Concept',canal:'indicacao',estagio:'proposta',tipo:'proposta',urgencia:'alta',valor_est:180000,resumo:'Proposta pendente. Prazo sexta.',acao:'Enviar proposta',prazo:'',criado:isoHoje(),atualizado:isoNow(),arquivado:false},
-      {id:'l-003',contato:'Pedro Ferreira',empresa:'',canal:'telefone',estagio:'contato',tipo:'info',urgencia:'media',valor_est:0,resumo:'Regularização Juvevê 15%.',acao:'Agendar visita',prazo:'',criado:isoHoje(),atualizado:isoNow(),arquivado:false}
-    ],
-    fila: [], exportados: [], _v: 3
+    leads: [],
+    fila: [], exportados: [], _v: 4
   };
 }
 

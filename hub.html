@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Berti · Painel</title>
+<title>DEKA · Hub</title>
+<!-- PWA / HOME SCREEN -->
+<meta name="apple-mobile-web-app-title" content="DEKA HUB">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#060D09">
+<link rel="apple-touch-icon" href="icons/deka-hub.png">
+<link rel="icon" type="image/png" href="icons/deka-hub.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -199,7 +206,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--ink);min-height:100vh
       </div>
       <div>
         <div class="data-row"><div class="data-lbl">Telefone</div><div class="data-val mono" id="d-tel">(41) 9183-6651</div><button class="btn-copy" onclick="copiar('d-tel',this)" style="margin-left:4px">copiar</button></div>
-        <div class="data-row"><div class="data-lbl">E-mail</div><div class="data-val mono" id="d-email">berti@curitibaconstrutora.com.br</div><button class="btn-copy" onclick="copiar('d-email',this)" style="margin-left:4px">copiar</button></div>
+        <div class="data-row"><div class="data-lbl">E-mail</div><div class="data-val mono" id="d-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e88a8d9a9c81a88b9d9a819c818a898b87869b9c9a9d9c879a89c68b8785c68a9a">[email&#160;protected]</a></div><button class="btn-copy" onclick="copiar('d-email',this)" style="margin-left:4px">copiar</button></div>
         <div class="data-row"><div class="data-lbl">PIX</div><div class="data-val mono" id="d-pix">59.622.624/0001-93</div><button class="btn-copy" onclick="copiar('d-pix',this)" style="margin-left:4px">copiar</button></div>
         <div class="data-row"><div class="data-lbl">Banco</div><div class="data-val">NuBank · Ag. 0001 · Cc. 583989144-1</div></div>
         <div class="data-row"><div class="data-lbl">Site</div><div class="data-val"><a href="https://berti-design.github.io/mestre-obra-berti" target="_blank" style="color:var(--grn);text-decoration:none">mestre-obra-berti ↗</a></div></div>
@@ -298,7 +305,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--ink);min-height:100vh
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // Clock
 function updateClock(){
   var d = new Date();
@@ -374,15 +381,4 @@ carregarNotas();
 // Keyboard shortcut: / to focus search
 document.addEventListener('keydown', function(e){
   if(e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
-    e.preventDefault();
-    document.getElementById('search').focus();
-  }
-  if(e.key === 'Escape'){
-    document.getElementById('search').value = '';
-    filtrar('');
-    document.getElementById('search').blur();
-  }
-});
-</script>
-</body>
-</html>
+    e

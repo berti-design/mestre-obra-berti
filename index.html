@@ -3925,7 +3925,7 @@ function sbHeaders(){
   };
 }
 
-// Salva state no Supabase — upsert pela PK obra_key (debounced 10s)
+// Supabase é fonte de verdade — debounce 3s
 function sbSave(obraKey, stateObj){
   clearTimeout(_sbSaveTimer);
   _sbSaveTimer = setTimeout(async function(){
@@ -3961,7 +3961,7 @@ function sbSave(obraKey, stateObj){
       sbAtualizarIndicador('fail');
       console.warn('[Supabase] save falhou:', e.message);
     }
-  }, 10000);
+  }, 3000);
 }
 
 // Carrega obra do Supabase — retorna objeto state ou null
@@ -4118,7 +4118,7 @@ function saveState(){
       currentObraKey = newKey;
       localStorage.setItem(newKey, JSON.stringify(toSave));
 
-      // Sync Supabase automático (debounce 30s — evita race conditions mas mantém multi-dispositivo)
+      // Supabase fonte de verdade (3s) — localStorage é cache offline
       const sbData = JSON.parse(JSON.stringify(toSave));
       sbData.fotos = (sbData.fotos||[]).map(function(f){ return f.cloud&&f.url ? {...f,src:f.url,b64:undefined} : {...f,b64:undefined}; });
       sbSave(newKey.replace('cockpit_',''), sbData);
@@ -10579,7 +10579,7 @@ PRIORIDADES válidas: "urgente", "media", "baixa"
 STATUS de pendência: "ABERTA", "EM ANDAMENTO", "RESOLVIDA"
 STATUS de material: "a_comprar", "comprado", "entregue"
 TIPOS de nota: "observacao", "decisao", "alerta", "lembrete"
-DIAS de presença: "sim", "nao", "nd"
+DIAS de presença: "sim", "nao"
 
 ADITIVOS: Se o gestor mencionar um serviço, material ou trabalho que NÃO tem código SRV correspondente na lista acima, inclua em "aditivos_sugeridos" com descrição, categoria mais adequada, valor estimado (0 se não mencionado) e justificativa. Só sugira aditivo se o serviço claramente não existe no orçamento.
 
@@ -10590,7 +10590,7 @@ Retorne APENAS um JSON válido, sem texto antes ou depois, sem markdown, sem blo
     {"cod":"SRV-XXX","status_atual":"...","pct_atual":0,"observacao":"..."}
   ],
   "presenca": [
-    {"cod":"EQ-XXX-XX","seg":"sim|nao|nd","ter":"sim|nao|nd","qua":"sim|nao|nd","qui":"sim|nao|nd","sex":"sim|nao|nd","nota":"..."}
+    {"cod":"EQ-XXX-XX","presente":"sim|nao","nota":"observação opcional"}
   ],
   "pendencias_novas": [
     {"descricao":"...","prioridade":"urgente|media|baixa","responsavel":"...","status":"ABERTA"}
@@ -10609,7 +10609,11 @@ Retorne APENAS um JSON válido, sem texto antes ou depois, sem markdown, sem blo
 
 REGRAS:
 - Só inclua serviços que foram mencionados. Omita arrays vazios ou deixe vazio [].
-- Para presença de equipe, só inclua se o dia foi mencionado. Use "nd" para dias não mencionados.
+- REGRA DE PRESENÇA:
+  A narrativa é sobre UM dia específico (informado no contexto do usuário).
+  Inclua no array APENAS equipes explicitamente mencionadas como presentes ou trabalhando no local.
+  Se a equipe NÃO foi mencionada, NÃO inclua no array (será considerada "nd" — não definida).
+  NUNCA preencha presença para toda a semana — apenas para o dia narrado.
 - pct_atual deve ser número inteiro 0-100.
 - Infira prioridade pelo tom: urgente para problemas bloqueantes, media para pendências normais.
 - narrativa_revisada: REGISTRO TÉCNICO ANALÍTICO. REGRAS INVIOLÁVEIS:
@@ -10628,7 +10632,9 @@ REGRAS:
     // Build message content
     const userContent = [];
     const diarioCtx = getDiarioContexto();
-    userContent.push({ type: 'text', text: `Narrativa da visita (${DIAS_LABELS[diarioDiaSelecionado]}):\n\n${texto}\n\n---\nContexto acumulado da semana:\n${diarioCtx}` });
+    const _datasCtx = getDiasData(diarioSemanaOffset||0);
+    const _ddCtx = _datasCtx[diarioDiaSelecionado] || '';
+    userContent.push({ type: 'text', text: `Narrativa da visita de ${DIAS_LABELS[diarioDiaSelecionado]} (${_ddCtx}):\n\n${texto}\n\n---\nContexto acumulado da semana:\n${diarioCtx}` });
 
     const raw = await callClaude({
       system: systemPrompt,
@@ -11262,17 +11268,16 @@ function mostrarApplyModal(d){
   const pres = d.presenca || [];
   if(pres.length){
     html += `<div class="apply-section">
-      <div class="apply-section-title">👷 Presença de Equipes (${pres.length})</div>`;
+      <div class="apply-section-title">👷 Presença de Equipes — ${DIAS_LABELS[diarioDiaSelecionado]||'DIA'} (${pres.length})</div>`;
     pres.forEach((p,i)=>{
       const eq = state.equipes.find(e=>e.cod===p.cod);
       const nome = eq ? eq.nome : p.cod;
-      const icon = {sim:'✓', nao:'✗', nd:'—'};
-      const dias = ['seg','ter','qua','qui','sex'].map(d=>`${d.charAt(0).toUpperCase()}:${icon[p[d]||'nd']}`).join(' ');
+      const icon = p.presente === 'sim' ? '✓ Presente' : p.presente === 'nao' ? '✗ Ausente' : '— N/D';
       html += `<div class="apply-item">
         <input type="checkbox" class="apply-item-check" id="chk-pres-${i}" checked>
         <div class="apply-item-text">
           <span class="apply-item-tag">${esc(p.cod)}</span> ${esc(nome)}
-          <div class="apply-item-change" style="font-family:var(--font-mono);font-size:11px">${dias}</div>
+          <div class="apply-item-change">${icon}</div>
           ${p.nota ? `<div style="font-size:11px;color:var(--muted)">${esc(p.nota)}</div>` : ''}
         </div>
       </div>`;
@@ -11429,43 +11434,20 @@ function aplicarExtracoes(){
     }
   });
 
-  // Presença — atualiza equipe E diário do dia selecionado
+  // Presença — formato simplificado: {cod, presente, nota}
   (d.presenca||[]).forEach((p,i)=>{
     const chk = document.getElementById('chk-pres-'+i);
     if(!chk || !chk.checked) return;
     const idx = state.equipes.findIndex(e=>e.cod===p.cod);
     if(idx>=0){
-      if(!state.equipes[idx].presenca) state.equipes[idx].presenca = {seg:'nd',ter:'nd',qua:'nd',qui:'nd',sex:'nd',sab:'nd',dom:'nd'};
-      DIAS_SEMANA.forEach(function(dia){
-        if(p[dia] && p[dia]!=='nd') state.equipes[idx].presenca[dia] = p[dia];
-      });
-      if(p.nota) state.equipes[idx].nota = p.nota;
-
-      // Sincronizar com o diário do dia selecionado (tela de Visita)
       var diaAtual = diarioDiaSelecionado || 'seg';
+      if(!state.equipes[idx].presenca) state.equipes[idx].presenca = {};
+      state.equipes[idx].presenca[diaAtual] = p.presente || 'sim';
+      if(p.nota) state.equipes[idx].nota = p.nota;
       if(!state.diario) state.diario = {};
       if(!state.diario[diaAtual]) state.diario[diaAtual] = { texto:'', presenca:{}, salvo_em:'' };
       if(!state.diario[diaAtual].presenca) state.diario[diaAtual].presenca = {};
-      // Marcar presença do dia atual baseado nos dados da IA
-      if(p[diaAtual] && p[diaAtual]!=='nd'){
-        state.diario[diaAtual].presenca[p.cod] = p[diaAtual];
-      } else {
-        // Se a IA só disse que estava presente (sem especificar dia), marcar no dia selecionado
-        var temPresenca = DIAS_SEMANA.some(function(dia){ return p[dia]==='sim'; });
-        if(temPresenca){
-          // Marcar como presente no dia que tem 'sim'
-          DIAS_SEMANA.forEach(function(dia){
-            if(p[dia] && p[dia]!=='nd'){
-              if(!state.diario[dia]) state.diario[dia] = { texto:'', presenca:{}, salvo_em:'' };
-              if(!state.diario[dia].presenca) state.diario[dia].presenca = {};
-              state.diario[dia].presenca[p.cod] = p[dia];
-            }
-          });
-        } else {
-          // IA detectou presença mas sem dia específico — marcar no dia selecionado
-          state.diario[diaAtual].presenca[p.cod] = 'sim';
-        }
-      }
+      state.diario[diaAtual].presenca[p.cod] = p.presente || 'sim';
       count++;
     }
   });

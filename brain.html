@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Jost:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════
-   BRAIN v12 — COMMAND CENTER (ORGANISMO)
+   BRAIN v13 — COMMAND CENTER (ORGANISMO)
    Visual: Angular · Dense · Monochromatic · One Accent
    Referência: Bloomberg · Palantir · War Room
 ═══════════════════════════════════════════════════════ */
@@ -573,7 +573,7 @@ canvas{display:block}
 <div class="topbar">
   <div class="tb-brand">
     <div class="tb-logo">BRAIN<span style="color:var(--gold)">.</span></div>
-    <div class="tb-version" style="color:var(--gold);border:1px solid var(--gold2)">v12</div>
+    <div class="tb-version" style="color:var(--gold);border:1px solid var(--gold2)">v13</div>
   </div>
   <div class="tb-status-strip">
     <div class="tb-stat"><div class="tb-stat-val hot" id="kp-crit">0</div><div class="tb-stat-lbl">Críticos</div></div>
@@ -1149,7 +1149,7 @@ function obrasColor(key){
 
 // ── salvarObsInterna REMOVIDO (v10) ──
 // Brain NUNCA escreve na tabela cockpit_obras.
-// Observações internas serão salvas em brain_data (futuramente).
+// Estado do Brain persiste em brain_data via sbSaveBrain().
 async function salvarObsInterna(obra_key, obs){
   toast('BLOQUEADO: Brain não escreve em cockpit_obras','err');
 }
@@ -1206,7 +1206,53 @@ async function importarComercial(silent){
 var S = loadS();
 function stateDefault(){return{items:[],plano:[],briefing:null,_v:7,_at:''};}
 function loadS(){try{var r=localStorage.getItem(SK);if(r)return JSON.parse(r);}catch(e){}return stateDefault();}
-function save(){S._at=new Date().toISOString();try{localStorage.setItem(SK,JSON.stringify(S));}catch(e){}}
+function save(){
+  S._at=new Date().toISOString();
+  try{localStorage.setItem(SK,JSON.stringify(S));}catch(e){} // cache offline
+  sbSaveBrain(); // fonte de verdade
+}
+
+// ── Supabase brain_data: fonte de verdade ──
+var _brainSaveTimer = null;
+function sbSaveBrain(){
+  clearTimeout(_brainSaveTimer);
+  _brainSaveTimer = setTimeout(async function(){
+    try{
+      var payload = {user_key:'evandro', data:S, updated_at:S._at||new Date().toISOString()};
+      var url = SUPA_URL+'/rest/v1/brain_data';
+      var res = await fetch(url, {
+        method:'POST',
+        headers:{
+          'apikey':SUPA_KEY,
+          'Authorization':'Bearer '+SUPA_KEY,
+          'Content-Type':'application/json',
+          'Prefer':'resolution=merge-duplicates,return=minimal'
+        },
+        body:JSON.stringify(payload),
+        signal:AbortSignal.timeout(12000)
+      });
+      if(!res.ok) throw new Error('status '+res.status);
+    }catch(e){console.warn('[Supabase] brain save falhou:',e.message);}
+  }, 3000);
+}
+
+async function loadFromSupabase(){
+  try{
+    var rows = await supaFetch('brain_data?user_key=eq.evandro&limit=1');
+    if(rows && rows.length && rows[0].data){
+      var remote = rows[0].data;
+      // Comparar timestamps: Supabase mais recente ganha
+      var remoteTs = remote._at ? new Date(remote._at).getTime() : 0;
+      var localTs = S._at ? new Date(S._at).getTime() : 0;
+      if(remoteTs >= localTs){
+        S = remote;
+        localStorage.setItem(SK, JSON.stringify(S));
+        return true;
+      }
+    }
+  }catch(e){console.warn('[Supabase] brain load falhou — usando cache');}
+  return false;
+}
 
 // ════════════════════════════════════════════════
 // NAV
@@ -2305,21 +2351,26 @@ function updateKPIs(){
 // ════════════════════════════════════════════════
 // UTILS
 // ════════════════════════════════════════════════
-function simSync(){
+async function simSync(){
   toast('SINCRONIZANDO SUPABASE...','');
-  carregarObras().then(function(){
+  try{
+    // Sync brain_data (estado)
+    await loadFromSupabase();
+    // Sync obras
+    await carregarObras();
     var novos = sincronizarOperacao();
     importarComercial().catch(function(){});
     var obrasCount = Object.keys(CTXS).length;
     setEl('kp-obras', obrasCount);
-    renderMatrix&&renderMatrix();
+    renderMatrix();
     renderSideCharts();
     updateKPIs();
     renderCtxFilters();
+    renderScript();
     toast('SYNC OK · '+obrasCount+' obras'+(novos?' · '+novos+' novas tarefas':''),'ok');
-  }).catch(function(){
+  }catch(e){
     toast('FALHA NA CONEXÃO','err');
-  });
+  }
 }
 function limparTA(){setVal('dump-ta','');document.getElementById('dump-ta').style.height='';}
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,160)+'px';}
@@ -2362,7 +2413,7 @@ document.addEventListener('click', function(e){
 // ════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════
-// 1. Render inicial com cache (instantâneo)
+// 1. Render inicial com cache localStorage (instantâneo)
 renderMatrix();
 renderSideCharts();
 updateKPIs();
@@ -2388,22 +2439,40 @@ if(S.briefing && S.briefing.ts){
 // 4. Render script com dados do cache
 renderScript();
 
-// 5. Refresh async em background
-carregarObras().then(function(){
-  var novos = sincronizarOperacao();
-  importarComercial(true).catch(function(){});
-  var obrasCount = Object.keys(CTXS).length;
-  setEl('kp-obras', obrasCount);
-  renderMatrix&&renderMatrix();
-  renderSideCharts&&renderSideCharts();
-  updateKPIs();
-  renderCtxFilters();
-  if(novos>0) toast(novos+' TAREFAS AUTO-GERADAS DAS OBRAS','ai');
-  // Briefing: regenerar se velho ou inexistente, senão mostrar cache
-  var _bAge2 = S.briefing&&S.briefing.ts ? (Date.now()-new Date(S.briefing.ts).getTime())/60000 : 999;
-  if(_bAge2 > 30) gerarBriefing();
-  else mostrarBriefing(S.briefing);
-}).catch(function(){});
+// 5. Refresh async: Supabase como fonte de verdade
+(async function(){
+  // 5a. Carregar estado do brain_data (mais recente ganha)
+  var supaLoaded = await loadFromSupabase();
+  if(supaLoaded){
+    // Re-render com dados frescos do Supabase
+    renderMatrix();
+    renderSideCharts();
+    updateKPIs();
+    renderCtxFilters();
+    renderScript();
+    if(S.briefing && S.briefing.ts){
+      var _bAge3 = (Date.now()-new Date(S.briefing.ts).getTime())/60000;
+      if(_bAge3 < 30) mostrarBriefing(S.briefing);
+    }
+  }
+  // 5b. Carregar obras e sincronizar
+  try{
+    await carregarObras();
+    var novos = sincronizarOperacao();
+    importarComercial(true).catch(function(){});
+    var obrasCount = Object.keys(CTXS).length;
+    setEl('kp-obras', obrasCount);
+    renderMatrix();
+    renderSideCharts();
+    updateKPIs();
+    renderCtxFilters();
+    if(novos>0) toast(novos+' TAREFAS AUTO-GERADAS DAS OBRAS','ai');
+    // Briefing: regenerar se velho ou inexistente
+    var _bAge2 = S.briefing&&S.briefing.ts ? (Date.now()-new Date(S.briefing.ts).getTime())/60000 : 999;
+    if(_bAge2 > 30) gerarBriefing();
+    else mostrarBriefing(S.briefing);
+  }catch(e){}
+})();
 // Redraw charts on resize
 window.addEventListener('resize',function(){
   if(document.getElementById('page-matrix').classList.contains('active'))renderSideCharts();

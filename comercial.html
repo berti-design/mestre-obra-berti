@@ -531,7 +531,7 @@ var SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJl
 var CF      = 'https://anthropic-proxy.berti-b52.workers.dev';
 var AI_URL  = CF + '/v1/messages';
 var AI_MDL  = 'claude-sonnet-4-20250514';
-var STORE   = 'comercial_berti_v4';
+var STORE   = 'comercial_berti_v5';
 var DIAS    = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 var CI      = {whatsapp:'💬',email:'📧',indicacao:'🤝',anuncio:'📢',telefone:'📞'};
 var TL      = {lead:'LEAD',follow_up:'FOLLOW-UP',proposta:'PROPOSTA',cobranca:'COBRANÇA',negociacao:'NEGOCIAÇÃO',info:'INFO'};
@@ -576,15 +576,73 @@ var mic = null, micOn = false, timerIv = null, editLeadId = null, expDays = 0;
 var cachedObraKey = null; // preenchido no init via cockpit_obras
 
 function stDef() {
-  return { conversas: [], leads: [], fila: [], exportados: [], _v: 4 };
+  return { conversas: [], leads: [], fila: [], exportados: [], _v: 5 };
 }
 
 function loadSt() {
-  try { var r = localStorage.getItem(STORE); if (r) return JSON.parse(r); } catch(e) {}
+  try {
+    var r = localStorage.getItem(STORE);
+    if (r) return JSON.parse(r);
+    // Migração v4 → v5: ler dados antigos se existirem
+    var old = localStorage.getItem('comercial_berti_v4');
+    if (old) {
+      var parsed = JSON.parse(old);
+      parsed._v = 5;
+      localStorage.setItem(STORE, JSON.stringify(parsed));
+      console.log('[COMERCIAL] Migrado v4 → v5');
+      return parsed;
+    }
+  } catch(e) { console.error('[COMERCIAL] loadSt erro:', e); }
   return stDef();
 }
 
-function saveSt() { st._savedAt = isoNow(); localStorage.setItem(STORE, JSON.stringify(st)); }
+// ═══════════════════════════════════════════════════════════
+// SUPABASE — fonte de verdade · localStorage = cache offline
+// ═══════════════════════════════════════════════════════════
+var _comSaveTimer = null;
+
+function sbSaveCom() {
+  clearTimeout(_comSaveTimer);
+  _comSaveTimer = setTimeout(async function(){
+    try {
+      var payload = { user_key:'evandro', data:st, updated_at:st._savedAt||new Date().toISOString() };
+      var res = await fetch(SB_URL+'/rest/v1/comercial_data', {
+        method:'POST',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify(payload)
+      });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+    } catch(e){ console.warn('[Supabase] comercial save falhou:', e.message); }
+  }, 3000);
+}
+
+async function loadFromSupabase() {
+  try {
+    var res = await fetch(SB_URL+'/rest/v1/comercial_data?user_key=eq.evandro&limit=1',
+      {headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},signal:AbortSignal.timeout(8000)});
+    if(res.ok){
+      var rows = await res.json();
+      if(rows && rows.length && rows[0].data){
+        st = rows[0].data;
+        if(!st._v) st._v = 5;
+        if(!st.conversas) st.conversas = [];
+        if(!st.leads) st.leads = [];
+        if(!st.fila) st.fila = [];
+        if(!st.exportados) st.exportados = [];
+        localStorage.setItem(STORE, JSON.stringify(st));
+        console.log('[Supabase] comercial carregado — '+st.conversas.length+' conversas');
+        return true;
+      }
+    }
+  } catch(e){ console.warn('[Supabase] comercial load falhou — usando cache:', e.message); }
+  return false;
+}
+
+function saveSt() {
+  st._savedAt = isoNow();
+  localStorage.setItem(STORE, JSON.stringify(st));
+  sbSaveCom();
+}
 
 // ═══════════════════════════════════════════════════════════
 // UTILS
@@ -1300,7 +1358,7 @@ function markDone(id){var it=st.fila.find(function(f){return f.id===id;});if(!it
 function snooze(id){var it=st.fila.find(function(f){return f.id===id;});if(!it)return;it.adiado=(it.adiado||0)+1;var b=it.prazo_hora?new Date(it.prazo_hora):new Date();b.setHours(b.getHours()+2);it.prazo_hora=b.toISOString();if(it.urgencia==='alta')it.urgencia='media';else if(it.urgencia==='media')it.urgencia='baixa';saveSt();toast('Adiado +2h');renderFila();}
 
 // ═══════════════════════════════════════════════════════════
-// EXPORT — payload corrigido v4: sem importado, com prazo/valor_est, validação NOT NULL
+// EXPORT — payload v5: sem importado, com obra_key/prazo/valor_est, validação NOT NULL
 // ═══════════════════════════════════════════════════════════
 function setExpFilter(btn,days){expDays=days;document.querySelectorAll('.efbtn').forEach(function(b){b.classList.remove('act');});btn.classList.add('act');renderExport();}
 
@@ -1385,17 +1443,28 @@ function updateClock(){var d=new Date();document.getElementById('clock').textCon
 setInterval(updateClock,30000);updateClock();
 
 // ═══════════════════════════════════════════════════════════
-// INIT — paste listener unificado (1 único, corrigido v4)
+// INIT — async: Supabase primeiro → cache fallback → render
 // ═══════════════════════════════════════════════════════════
-(function(){
+(async function(){
+  // 1. Render imediato com cache localStorage (UX instantânea)
   try {
-    renderCList(); badges(); checkSB();
+    renderCList(); badges();
   } catch(e) {
-    console.error('[COMERCIAL INIT ERROR]', e);
-    // Garantir que pelo menos o empty state apareça
+    console.error('[COMERCIAL INIT] render cache falhou:', e);
     var cl = document.getElementById('clist');
     if(cl) cl.innerHTML='<div class="empty-state">Erro ao carregar.<br>Recarregue a página.</div>';
   }
+
+  // 2. Tentar Supabase como fonte de verdade
+  var loaded = await loadFromSupabase();
+  if(loaded) {
+    try { renderCList(); badges(); } catch(e) { console.error('[COMERCIAL INIT] render Supabase falhou:', e); }
+  }
+
+  // 3. Status + obra_key
+  checkSB();
+
+  // 4. Paste listener unificado (1 único)
   document.addEventListener('paste', function(e) {
     if(curConvId){ convPasteHandler(e); return; }
     var items=(e.clipboardData||e.originalEvent.clipboardData).items;

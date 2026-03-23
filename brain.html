@@ -235,13 +235,15 @@ html,body{height:100%;background:var(--void);color:var(--t1);font-family:var(--m
 .act-card.prio-alta{border-left:2px solid var(--hot)}
 .act-card.prio-media{border-left:2px solid var(--warn)}
 .act-card.prio-baixa{border-left:2px solid var(--g2)}
-.ac-name{font-size:10px;font-weight:500;color:var(--t1);line-height:1.35;margin-bottom:2px}
-.ac-meta{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
-.ac-ctx{font-size:8px;font-weight:700;color:var(--acc);letter-spacing:.04em}
+.ac-name{font-size:10px;font-weight:500;color:var(--t1);line-height:1.25;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-meta{display:flex;gap:5px;align-items:center;flex-wrap:nowrap}
+.ac-ctx{font-size:8px;font-weight:700;color:var(--acc);letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70px}
 .ac-tempo{font-size:8px;color:var(--t3)}
 .ac-chk{display:flex;align-items:center;justify-content:center;width:12px;height:12px;border:1px solid var(--g2);flex-shrink:0;cursor:pointer;transition:all .15s;margin-left:auto}
 .ac-chk:hover{border-color:var(--ok);background:var(--ok2)}
 .ac-chk.done{background:var(--ok);border-color:var(--ok);color:#000;font-size:8px}
+.ac-more{font-family:var(--mono);font-size:8px;font-weight:600;color:var(--acc);padding:3px 0;cursor:pointer;text-align:center;letter-spacing:.06em;transition:color .15s}
+.ac-more:hover{color:var(--t0)}
 .ac-empty{font-size:8px;color:var(--t3);padding:4px 0;letter-spacing:.04em}
 
 /* SIDE PANEL */
@@ -473,6 +475,46 @@ select.finp option{background:var(--base)}
   .pipeline-bottom{grid-template-columns:1fr}
 }
 
+/* ═══════════════════════════════════════════
+   VISÃO SEMANAL (dentro da Matrix)
+═══════════════════════════════════════════ */
+.view-toggle{display:flex;gap:0;margin-left:12px}
+.vt-btn{background:none;border:1px solid var(--g1);color:var(--t3);font-family:var(--mono);font-size:8px;font-weight:600;padding:4px 10px;cursor:pointer;transition:all .15s;letter-spacing:.08em;text-transform:uppercase}
+.vt-btn:first-child{border-right:none}
+.vt-btn.vt-active{background:var(--acc);border-color:var(--acc);color:#fff}
+.vt-btn:hover:not(.vt-active){border-color:var(--t2);color:var(--t1)}
+.week-view{display:none;flex:1;overflow:auto;padding:8px}
+.week-view.active{display:flex}
+.week-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;min-height:200px}
+@media(max-width:800px){.week-grid{grid-template-columns:repeat(2,1fr)}}
+.wk-col{display:flex;flex-direction:column;min-width:0}
+.wk-col-hd{background:var(--raise);border:1px solid var(--g1);padding:6px 8px;text-align:center;margin-bottom:4px;position:sticky;top:0;z-index:2}
+.wk-col-hd.wk-today{border-bottom:2px solid var(--acc);background:var(--acc4)}
+.wk-col-hd.wk-past{opacity:.5}
+.wk-day-name{font-family:var(--cond);font-size:11px;font-weight:700;color:var(--t1);letter-spacing:.08em;text-transform:uppercase}
+.wk-day-date{font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:1px}
+.wk-day-load{font-family:var(--mono);font-size:8px;color:var(--t2);margin-top:2px}
+.wk-cards{display:flex;flex-direction:column;gap:3px;flex:1}
+.wk-card{background:var(--raise);border:1px solid var(--g1);padding:6px 8px;cursor:pointer;transition:all .12s;position:relative}
+.wk-card:hover{border-color:var(--acc);background:var(--acc4)}
+.wk-card.wk-done{opacity:.25}
+.wk-card.wk-done .wk-txt{text-decoration:line-through}
+.wk-card.wk-alta{border-left:2px solid var(--hot)}
+.wk-card.wk-media{border-left:2px solid var(--warn)}
+.wk-card.wk-baixa{border-left:2px solid var(--g2)}
+.wk-card.wk-overdue{background:var(--hot2);border-color:rgba(200,56,42,.3)}
+.wk-txt{font-size:10px;font-weight:500;color:var(--t1);line-height:1.3;margin-bottom:3px;font-family:var(--body)}
+.wk-meta{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.wk-ctx{font-size:8px;font-weight:700;color:var(--acc);font-family:var(--mono)}
+.wk-agt{font-size:7px;color:var(--t3);font-family:var(--mono);letter-spacing:.04em}
+.wk-tempo{font-size:8px;color:var(--t3);font-family:var(--mono);margin-left:auto}
+.wk-chk{position:absolute;top:5px;right:5px;width:12px;height:12px;border:1px solid var(--g2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-size:7px}
+.wk-chk:hover{border-color:var(--ok);background:var(--ok2)}
+.wk-chk.done{background:var(--ok);border-color:var(--ok);color:#000}
+.wk-empty{font-size:8px;color:var(--t3);padding:12px 0;text-align:center;font-family:var(--mono);letter-spacing:.06em}
+.wk-overdue-sec{margin-bottom:6px}
+.wk-overdue-hd{font-family:var(--cond);font-size:9px;font-weight:700;color:var(--hot);letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;background:var(--hot2);border:1px solid rgba(200,56,42,.25);margin-bottom:3px;text-align:center}
+
 /* ── CANVAS ── */
 
 .script-page{flex:1;display:flex;flex-direction:column;overflow:hidden}
@@ -594,12 +636,19 @@ canvas{display:block}
     <div class="matrix-layout">
       <div class="matrix-main">
         <div class="panel-hd" style="padding:6px 12px">
-          <div class="panel-title">Activity Matrix · Categoria × Agente</div>
-          <button class="btn-sm" onclick="abrirModal()">+ NOVO ITEM</button>
+          <div class="panel-title">Activity Matrix</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="view-toggle">
+              <button class="vt-btn vt-active" id="vt-matrix" onclick="setMatrixView('matrix')">MATRIX</button>
+              <button class="vt-btn" id="vt-semana" onclick="setMatrixView('semana')">SEMANA</button>
+            </div>
+            <button class="btn-sm" onclick="abrirModal()">+ NOVO ITEM</button>
+          </div>
         </div>
         <div class="act-grid-wrap" id="act-grid-wrap">
           <table class="act-grid" id="act-grid"><thead id="ag-thead"></thead><tbody id="ag-tbody"></tbody></table>
         </div>
+        <div class="week-view" id="week-view"></div>
       </div>
       <div class="matrix-side" id="matrix-side">
         <!-- charts side panel -->
@@ -670,13 +719,7 @@ canvas{display:block}
           placeholder="Despeje tudo. Ex: Preciso mandar email pro Joel sobre a medição, a Isadora pediu proposta para sexta, responder Dr. Mário sobre o cartório..."
           oninput="autoResize(this)"></textarea>
         <div class="dump-footer">
-          <div class="ctx-filter" id="ctx-filter">
-            <button class="cf-btn sel" data-ctx="todos" onclick="selCtx(this,'todos')">TODOS</button>
-            <button class="cf-btn" data-ctx="Badida" onclick="selCtx(this,'Badida')">BADIDA</button>
-            <button class="cf-btn" data-ctx="Isadora" onclick="selCtx(this,'Isadora')">ISADORA</button>
-            <button class="cf-btn" data-ctx="Pedro" onclick="selCtx(this,'Pedro')">PEDRO</button>
-            <button class="cf-btn" data-ctx="Admin" onclick="selCtx(this,'Admin')">ADMIN</button>
-          </div>
+          <div class="ctx-filter" id="ctx-filter"></div>
           <button class="btn-proc" id="btn-proc" onclick="processar()">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             PROCESSAR IA
@@ -702,7 +745,7 @@ canvas{display:block}
               <th>Contexto</th>
               <th>Agente</th>
               <th>Prio</th>
-              <th>Tempo</th>
+              <th>Prazo</th>
               <th style="width:20px"></th>
             </tr>
           </thead>
@@ -1013,13 +1056,19 @@ function sincronizarOperacao(){
   var existingKeys = {};
   S.items.forEach(function(it){ if(it.auto_key) existingKeys[it.auto_key]=true; });
   var novos = 0;
-  function addAuto(autoKey, cat, agt, texto, ctx, prio, tempo){
+  // Helper: converte DD/MM/YYYY ou YYYY-MM-DD para ISO date string
+  function toISO(d){
+    if(!d) return null;
+    if(d.includes('/')) return d.split('/').reverse().join('-');
+    return d;
+  }
+  function addAuto(autoKey, cat, agt, texto, ctx, prio, tempo, dataRef){
     if(existingKeys[autoKey]) return;
     existingKeys[autoKey] = true;
     S.items.push({
       id:'auto-'+Date.now()+'-'+Math.random().toString(36).slice(2,5),
       cat:cat, agt:agt, texto:texto, ctx:ctx, prio:prio, tempo:tempo||15,
-      data:hoje, hora:null, done:false, origem:'auto_obra', auto_key:autoKey,
+      data:toISO(dataRef)||hoje, hora:null, done:false, origem:'auto_obra', auto_key:autoKey,
       _autoTs:new Date().toISOString()
     });
     novos++;
@@ -1036,7 +1085,7 @@ function sincronizarOperacao(){
       var dias = Math.abs(srv.diff);
       addAuto(ak, 'operacional', 'EVANDRO',
         srv.desc+' — '+srv.pct+'% ('+dias+'d vencido). Cobrar equipe '+srv.equipe,
-        nomeCtx, 'alta', 15);
+        nomeCtx, 'alta', 15, srv.dataFim);
     });
 
     // ── SERVIÇOS EM RISCO → tarefa preventiva ──
@@ -1044,7 +1093,7 @@ function sincronizarOperacao(){
       var ak = 'risco-'+key+'-'+srv.cod;
       addAuto(ak, 'operacional', 'EVANDRO',
         srv.desc+' — '+srv.pct+'% vence em '+srv.diff+'d. Verificar avanço',
-        nomeCtx, srv.diff<=3?'alta':'media', 10);
+        nomeCtx, srv.diff<=3?'alta':'media', 10, srv.dataFim);
     });
 
     // ── PENDÊNCIAS ABERTAS → tarefa por tipo ──
@@ -1143,6 +1192,7 @@ async function importarComercial(silent){
     save();
     renderItems();
     renderMatrix&&renderMatrix();
+    renderCtxFilters();
     toast('IMPORTADOS '+novos+' ITENS DO COMERCIAL','ai');
     if(novos>0) setTimeout(gerarBriefing, 800);
   }catch(e){
@@ -1171,7 +1221,7 @@ function goPage(n){
   });
   var el=document.getElementById('page-'+n);if(el)el.classList.add('active');
   var nb=document.getElementById('nav-'+n);if(nb)nb.classList.add('active');
-  if(n==='matrix'){renderMatrix();renderSideCharts();}
+  if(n==='matrix'){renderMatrix();renderSideCharts();if(_matrixView==='semana')renderWeekView();}
   if(n==='pipeline'){renderPipeline();}
   if(n==='agenda'){renderGantt();}
   if(n==='dump'){renderItems();}
@@ -1275,7 +1325,13 @@ function mostrarBriefing(b){
 function renderMatrix(){
   updateKPIs();
   var catKeys=Object.keys(CATS);
-  var agtKeys=Object.keys(AGENTES);
+  var allAgtKeys=Object.keys(AGENTES);
+  // Filtrar agentes: mostrar apenas os que têm itens pendentes
+  var agtKeys=allAgtKeys.filter(function(a){
+    return S.items.some(function(i){return!i.done&&i.agt===a;});
+  });
+  // Garantir EVANDRO sempre visível
+  if(agtKeys.indexOf('EVANDRO')<0) agtKeys.unshift('EVANDRO');
   // THEAD
   var th='<tr><th class="th-cat">CATEGORIA</th>';
   agtKeys.forEach(function(a){
@@ -1289,6 +1345,7 @@ function renderMatrix(){
   catKeys.forEach(function(cat){
     var catInfo=CATS[cat];
     var catItems=S.items.filter(function(i){return!i.done&&i.cat===cat;});
+    if(!catItems.length) return; // ocultar categorias vazias
     tb+='<tr>';
     tb+='<td class="td-cat"><div class="cat-cell">'+
       '<div class="cat-marker" style="background:'+catInfo.color+'"></div>'+
@@ -1296,19 +1353,25 @@ function renderMatrix(){
       '<div class="cat-count">'+catItems.length+' item(s)</div></div>'+
     '</div></td>';
     agtKeys.forEach(function(agt){
-      var cell=S.items.filter(function(i){return!i.done&&i.cat===cat&&i.agt===agt;});
+      var cell=S.items.filter(function(i){return!i.done&&i.cat===cat&&i.agt===agt;}).sort(pp);
       tb+='<td class="td-cell">';
       if(cell.length){
-        cell.forEach(function(it){
-          tb+='<div class="act-card prio-'+it.prio+(it.done?' done':'')+'" id="ac-'+it.id+'">' +
-            '<div class="ac-name">'+esc(it.texto.slice(0,50))+(it.texto.length>50?'…':'')+'</div>'+
+        var MAX_SHOW = 3;
+        var show = cell.slice(0, MAX_SHOW);
+        var rest = cell.length - MAX_SHOW;
+        show.forEach(function(it){
+          tb+='<div class="act-card prio-'+it.prio+(it.done?' done':'')+'" id="ac-'+it.id+'" data-iid="'+it.id+'">' +
+            '<div class="ac-name">'+esc(it.texto.slice(0,40))+(it.texto.length>40?'…':'')+'</div>'+
             '<div class="ac-meta">'+
               (it.ctx?'<span class="ac-ctx">'+esc(it.ctx)+'</span>':'')+
               (it.tempo?'<span class="ac-tempo">~'+it.tempo+'m</span>':'')+
-              '<div class="ac-chk'+(it.done?' done':'')+'" onclick="toggleAct(\''+it.id+'\')">'+( it.done?'✓':'')+'</div>'+
+              '<div class="ac-chk'+(it.done?' done':'')+'" onclick="event.stopPropagation();toggleAct(\''+it.id+'\')">'+( it.done?'✓':'')+'</div>'+
             '</div>'+
           '</div>';
         });
+        if(rest > 0){
+          tb+='<div class="ac-more" onclick="expandMatrixCell(this,\''+cat+'\',\''+agt+'\')">+ '+rest+' mais</div>';
+        }
       } else {
         tb+='<div class="ac-empty">—</div>';
       }
@@ -1321,6 +1384,169 @@ function renderMatrix(){
   var crit=S.items.filter(function(i){return!i.done&&i.prio==='alta';}).length;
   var nb=document.getElementById('ntb-matrix');
   if(nb){nb.textContent=crit;nb.style.display=crit>0?'':'none';}
+}
+
+function expandMatrixCell(el, cat, agt){
+  var cell = S.items.filter(function(i){return !i.done && i.cat===cat && i.agt===agt;}).sort(pp);
+  var td = el.closest('.td-cell');
+  if(!td) return;
+  var html = '';
+  cell.forEach(function(it){
+    html += '<div class="act-card prio-'+it.prio+'" id="ac-'+it.id+'" data-iid="'+it.id+'">' +
+      '<div class="ac-name">'+esc(it.texto.slice(0,40))+(it.texto.length>40?'…':'')+'</div>'+
+      '<div class="ac-meta">'+
+        (it.ctx?'<span class="ac-ctx">'+esc(it.ctx)+'</span>':'')+
+        (it.tempo?'<span class="ac-tempo">~'+it.tempo+'m</span>':'')+
+        '<div class="ac-chk" onclick="event.stopPropagation();toggleAct(\''+it.id+'\')"></div>'+
+      '</div>'+
+    '</div>';
+  });
+  html += '<div class="ac-more" onclick="renderMatrix()">▲ recolher</div>';
+  td.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════
+// VISÃO SEMANAL
+// ════════════════════════════════════════════════
+var _matrixView = 'matrix';
+function setMatrixView(v){
+  _matrixView = v;
+  var gw = document.getElementById('act-grid-wrap');
+  var wv = document.getElementById('week-view');
+  var vm = document.getElementById('vt-matrix');
+  var vs = document.getElementById('vt-semana');
+  if(v==='semana'){
+    if(gw) gw.style.display='none';
+    if(wv){wv.classList.add('active');}
+    if(vm) vm.classList.remove('vt-active');
+    if(vs) vs.classList.add('vt-active');
+    renderWeekView();
+  } else {
+    if(gw) gw.style.display='';
+    if(wv) wv.classList.remove('active');
+    if(vm) vm.classList.add('vt-active');
+    if(vs) vs.classList.remove('vt-active');
+  }
+}
+
+function renderWeekView(){
+  var el = document.getElementById('week-view');
+  if(!el) return;
+  // Calcular segunda a sexta da semana atual
+  var now = new Date();
+  var dow = now.getDay(); // 0=dom,1=seg...6=sáb
+  var mon = new Date(now);
+  mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1)); // seg
+  mon.setHours(0,0,0,0);
+
+  var dias = [];
+  for(var i=0;i<5;i++){
+    var d = new Date(mon);
+    d.setDate(mon.getDate()+i);
+    dias.push({
+      date: d,
+      iso: d.toISOString().slice(0,10),
+      nome: DIAS_S[d.getDay()],
+      num: d.getDate(),
+      mes: MESES[d.getMonth()]
+    });
+  }
+
+  var pend = S.items.filter(function(it){return !it.done;});
+
+  // Itens atrasados (antes da segunda)
+  var overdue = pend.filter(function(it){return it.data < dias[0].iso;}).sort(pp);
+
+  // Itens por dia
+  var diasItems = dias.map(function(dia){
+    return pend.filter(function(it){return it.data === dia.iso;}).sort(pp);
+  });
+
+  // Itens sem data definida ou depois de sexta → ignorar na visão semanal
+
+  // Calcular semana label
+  var cfg = Object.keys(CTXS).length ? CTXS[Object.keys(CTXS)[0]] : null;
+  var semLabel = cfg ? 'S'+(cfg.sem||'?') : '';
+
+  var html = '';
+
+  // Header
+  html += '<div style="width:100%">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px">';
+  html += '<div style="font-family:var(--cond);font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.1em;text-transform:uppercase">PLANEJAMENTO DA SEMANA'+(semLabel?' — '+semLabel:'')+'</div>';
+  html += '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)">'+dias[0].num+'/'+dias[0].mes+' → '+dias[4].num+'/'+dias[4].mes+'</div>';
+  html += '</div>';
+
+  // Overdue section
+  if(overdue.length){
+    html += '<div class="wk-overdue-sec">';
+    html += '<div class="wk-overdue-hd">ATRASADAS ('+overdue.length+')</div>';
+    html += '<div style="display:flex;gap:3px;flex-wrap:wrap">';
+    overdue.forEach(function(it){
+      html += mkWeekCard(it, true);
+    });
+    html += '</div></div>';
+  }
+
+  // Week grid
+  html += '<div class="week-grid">';
+  dias.forEach(function(dia, idx){
+    var isToday = dia.iso === HOJE;
+    var isPast = dia.iso < HOJE;
+    var items = diasItems[idx];
+    var totalMin = items.reduce(function(a,it){return a+(it.tempo||0);},0);
+
+    html += '<div class="wk-col">';
+    html += '<div class="wk-col-hd'+(isToday?' wk-today':'')+(isPast?' wk-past':'')+'">';
+    html += '<div class="wk-day-name">'+dia.nome+'</div>';
+    html += '<div class="wk-day-date">'+dia.num+'/'+dia.mes+'</div>';
+    html += '<div class="wk-day-load">'+items.length+' item'+(items.length!==1?'s':'')+' · '+totalMin+'m</div>';
+    html += '</div>';
+    html += '<div class="wk-cards">';
+    if(items.length){
+      items.forEach(function(it){
+        html += mkWeekCard(it, false);
+      });
+    } else {
+      html += '<div class="wk-empty">—</div>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div></div>';
+
+  el.innerHTML = html;
+
+  // Event delegation — remover handler antigo e anexar novo
+  if(el._wkHandler) el.removeEventListener('click', el._wkHandler);
+  el._wkHandler = function(e){
+    var chk = e.target.closest('.wk-chk');
+    var card = e.target.closest('.wk-card');
+    if(chk){
+      e.stopPropagation();
+      var id = chk.getAttribute('data-wkid');
+      var it = S.items.find(function(x){return x.id===id;});
+      if(it){it.done=!it.done;save();renderWeekView();renderMatrix();renderSideCharts();updateKPIs();if(it.done)toast('✓ '+it.texto.slice(0,28),'ok');}
+      return;
+    }
+    if(card){
+      abrirDetail(card.getAttribute('data-wkcard'));
+    }
+  };
+  el.addEventListener('click', el._wkHandler);
+}
+
+function mkWeekCard(it, isOverdue){
+  var cat = CATS[it.cat]||{label:it.cat,color:'#608090'};
+  var agt = AGENTES[it.agt]||{label:it.agt};
+  return '<div class="wk-card wk-'+it.prio+(it.done?' wk-done':'')+(isOverdue?' wk-overdue':'')+'" data-wkcard="'+esc(it.id)+'">'+
+    '<div class="wk-chk'+(it.done?' done':'')+'" data-wkid="'+esc(it.id)+'">'+(it.done?'✓':'')+'</div>'+
+    '<div class="wk-txt">'+esc(it.texto.slice(0,45))+(it.texto.length>45?'…':'')+'</div>'+
+    '<div class="wk-meta">'+
+      (it.ctx?'<span class="wk-ctx">'+esc(it.ctx)+'</span>':'')+
+      '<span class="wk-agt">'+esc(agt.label.replace('AGT_',''))+'</span>'+
+      '<span class="wk-tempo">~'+(it.tempo||30)+'m</span>'+
+    '</div>'+
+  '</div>';
 }
 
 // ════════════════════════════════════════════════
@@ -1556,7 +1782,7 @@ function renderItems(){
   // Atrasadas
   var atrasHtml='';
   if(atras.length){
-    atrasHtml='<div class="panel" style="overflow:hidden;margin-bottom:8px"><table class="item-table"><thead><tr><th style="width:16px"></th><th>Descrição</th><th>Categoria</th><th>Contexto</th><th>Agente</th><th>Prio</th><th>Tempo</th><th style="width:20px"></th></tr></thead><tbody>'+atras.map(mkRow).join('')+'</tbody></table></div>';
+    atrasHtml='<div class="panel" style="overflow:hidden;margin-bottom:8px"><table class="item-table"><thead><tr><th style="width:16px"></th><th>Descrição</th><th>Categoria</th><th>Contexto</th><th>Agente</th><th>Prio</th><th>Prazo</th><th style="width:20px"></th></tr></thead><tbody>'+atras.map(mkRow).join('')+'</tbody></table></div>';
   }
   setInner('list-atras',atrasHtml);
   setInner('items-tbody',ativos.length?ativos.map(mkRow).join(''):'<tr><td colspan="8" class="empty-cell">NENHUM ITEM ATIVO</td></tr>');
@@ -1568,10 +1794,21 @@ function renderItems(){
   updateKPIs();
 }
 
+function fmtDataRef(d){
+  if(!d) return '';
+  var diff = Math.ceil((new Date(d+'T12:00:00') - new Date(HOJE+'T12:00:00'))/86400000);
+  if(diff < -1) return '<span style="color:var(--hot);font-weight:600">'+Math.abs(diff)+'d atraso</span>';
+  if(diff === -1) return '<span style="color:var(--hot)">ontem</span>';
+  if(diff === 0) return '<span style="color:var(--acc)">hoje</span>';
+  if(diff === 1) return '<span style="color:var(--warn)">amanhã</span>';
+  var parts = d.split('-');
+  return '<span style="color:var(--t2)">'+parts[2]+'/'+parts[1]+'</span>';
+}
 function mkRow(it){
   var cat=CATS[it.cat]||{label:it.cat||'—',css:'ct-admin'};
   var agt=AGENTES[it.agt]||{label:it.agt||'—',css:'agt-deleg'};
   var pdClass='pd-'+it.prio;
+  var dataInfo = fmtDataRef(it.data);
   return '<tr class="'+(it.done?'done':'')+'" data-iid="'+it.id+'" style="cursor:pointer">'+
     '<td><div class="it-check'+(it.done?' done':'')+'" onclick="toggleItem(\''+it.id+'\')">'+( it.done?'✓':'')+'</div></td>'+
     '<td><div class="it-name">'+esc(it.texto)+'</div></td>'+
@@ -1579,7 +1816,7 @@ function mkRow(it){
     '<td><span style="font-size:9px;color:var(--t2);font-family:var(--mono)">'+esc(it.ctx||'—')+'</span></td>'+
     '<td><span class="agt-tag '+agt.css+'">'+agt.label+'</span></td>'+
     '<td><div style="display:flex;align-items:center;gap:4px"><div class="prio-dot '+pdClass+'"></div><span style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">'+it.prio+'</span></div></td>'+
-    '<td><span style="font-size:9px;font-family:var(--mono);color:var(--t3)">~'+( it.tempo||30)+'m</span></td>'+
+    '<td><div style="display:flex;flex-direction:column;gap:1px;font-size:9px;font-family:var(--mono)">'+dataInfo+'<span style="color:var(--t3)">~'+(it.tempo||30)+'m</span></div></td>'+
     '<td><button class="it-del" onclick="delItem(\''+it.id+'\')">×</button></td>'+
   '</tr>';
 }
@@ -1595,6 +1832,29 @@ function toggleAct(id){
   if(it.done)toast('✓ '+it.texto.slice(0,28),'ok');
 }
 function delItem(id){S.items=S.items.filter(function(x){return x.id!==id;});save();renderItems();}
+function renderCtxFilters(){
+  var el = document.getElementById('ctx-filter');
+  if(!el) return;
+  var seen = {};
+  var list = ['todos'];
+  seen['todos'] = true;
+  // Contextos das obras ativas
+  Object.keys(CTXS).forEach(function(k){
+    var nome = CTXS[k].nome.split(' ').slice(0,2).join(' ');
+    if(nome && !seen[nome]){ seen[nome]=true; list.push(nome); }
+  });
+  // Contextos dos itens existentes
+  S.items.forEach(function(it){
+    if(it.ctx && !seen[it.ctx]){ seen[it.ctx]=true; list.push(it.ctx); }
+  });
+  // Admin sempre no final
+  if(!seen['Admin']){ list.push('Admin'); }
+  // Gerar botões
+  el.innerHTML = list.map(function(c){
+    var sel = c === _ctx ? ' sel' : '';
+    return '<button class="cf-btn'+sel+'" data-ctx="'+esc(c)+'" onclick="selCtx(this,\''+esc(c.replace(/'/g,'\\\''))+'\')">'+esc(c.toUpperCase())+'</button>';
+  }).join('');
+}
 function selCtx(el,c){
   _ctx=c;
   document.querySelectorAll('.cf-btn').forEach(function(b){b.classList.remove('sel');});
@@ -2055,6 +2315,7 @@ function simSync(){
     renderMatrix&&renderMatrix();
     renderSideCharts();
     updateKPIs();
+    renderCtxFilters();
     toast('SYNC OK · '+obrasCount+' obras'+(novos?' · '+novos+' novas tarefas':''),'ok');
   }).catch(function(){
     toast('FALHA NA CONEXÃO','err');
@@ -2118,6 +2379,7 @@ if(_ctxsCache){
 }
 
 // 3. Briefing do cache (UX imediata, sem esperar async)
+renderCtxFilters();
 if(S.briefing && S.briefing.ts){
   var _bAge = (Date.now()-new Date(S.briefing.ts).getTime())/60000;
   if(_bAge < 30) mostrarBriefing(S.briefing);
@@ -2135,6 +2397,7 @@ carregarObras().then(function(){
   renderMatrix&&renderMatrix();
   renderSideCharts&&renderSideCharts();
   updateKPIs();
+  renderCtxFilters();
   if(novos>0) toast(novos+' TAREFAS AUTO-GERADAS DAS OBRAS','ai');
   // Briefing: regenerar se velho ou inexistente, senão mostrar cache
   var _bAge2 = S.briefing&&S.briefing.ts ? (Date.now()-new Date(S.briefing.ts).getTime())/60000 : 999;

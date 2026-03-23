@@ -111,6 +111,12 @@ html,body{height:100%;background:var(--void);color:var(--t1);font-family:var(--b
   </div>
 </div>
 
+<!-- Hidden compatibility layer for cockpit report functions -->
+<div id="rel-modal" style="display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.8)">
+  <div id="rel-modal-title" style="display:none"></div>
+  <div id="rel-preview-content" style="display:none"></div>
+</div>
+
 <!-- PREVIEW OVERLAY -->
 <div class="preview-wrap" id="preview-wrap">
   <div class="preview-bar">
@@ -1095,10 +1101,7 @@ function _gerarGanttPDF(modo){
 
   _relCurrentHtml = html;
   _relCurrentTitle = 'Cronograma & Gantt — Semana '+(c.semana||1);
-  document.getElementById('rel-preview-content').innerHTML = '<iframe srcdoc="'+html.replace(/"/g,'&quot;')+'" style="width:100%;min-height:85vh;border:none"></iframe>';
-  document.getElementById('rel-modal-title').textContent = _relCurrentTitle;
-  document.getElementById('rel-modal').classList.add('show');
-  document.getElementById('rel-modal').scrollTop = 0;
+  abrirModalRel(_relCurrentTitle, html);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1307,8 +1310,6 @@ ${cabHeader}
   <div class="secm" style="margin-top:18px">Pendências e Alertas</div>
   <div class="als">${altRows}</div>
 
-  <div class="secm" style="margin-top:18px">Registro Fotográfico</div>
-  ${fotosHtml}
 </div>
 <div class="rdp">
   <div class="rdp-l">${esc2(c.empresa||'Berti Construtora')} · CONFIDENCIAL</div>
@@ -1738,8 +1739,9 @@ async function _gerarRelClienteSemana(semNumSel){
   srvAtrasados.forEach(s => {
     const fimD = new Date((s.data_fim.includes('/') ? s.data_fim.split('/').reverse().join('-') : s.data_fim)+'T00:00:00');
     const diasAtraso = Math.max(1, Math.round((hoje - fimD) / 86400000));
+    const descLimpa = esc2((s.descricao||'').replace(/^SRV-\d+\s*[-—]?\s*/i,''));
     pontosAtencaoRows += `<tr>
-      <td style="padding:8px 10px;font-size:11px;font-weight:600">${esc2(s.descricao||'')}</td>
+      <td style="padding:8px 10px;font-size:11px;font-weight:600">${descLimpa}</td>
       <td style="padding:8px 10px;text-align:center"><span style="display:inline-block;padding:2px 8px;font-size:9px;font-weight:600;background:#FFF3E0;color:#E65100;border-radius:3px">Atrasado</span></td>
       <td style="padding:8px 10px;font-size:11px;color:#C62828;font-weight:600">${diasAtraso} dia${diasAtraso>1?'s':''} de atraso</td>
     </tr>`;
@@ -1748,8 +1750,9 @@ async function _gerarRelClienteSemana(semNumSel){
 
   srvPausados.forEach(s => {
     const motivo = (s.status_atual||'').replace('AGUARDANDO','Aguardando');
+    const descLimpa = esc2((s.descricao||'').replace(/^SRV-\d+\s*[-—]?\s*/i,''));
     pontosAtencaoRows += `<tr>
-      <td style="padding:8px 10px;font-size:11px;font-weight:600">${esc2(s.descricao||'')}</td>
+      <td style="padding:8px 10px;font-size:11px;font-weight:600">${descLimpa}</td>
       <td style="padding:8px 10px;text-align:center"><span style="display:inline-block;padding:2px 8px;font-size:9px;font-weight:600;background:#E3F2FD;color:#1565C0;border-radius:3px">${esc2(motivo)}</span></td>
       <td style="padding:8px 10px;font-size:11px;color:#666">Depende de liberação</td>
     </tr>`;
@@ -1758,8 +1761,9 @@ async function _gerarRelClienteSemana(semNumSel){
 
   pendencias.filter(p => p.status !== 'RESOLVIDO' && p.status !== 'CONCLUÍDO').forEach(p => {
     const tipo = (p.tipo||'Pendência').replace('DECISAO_CLIENTE','Decisão do cliente').replace('BLOQUEADOR','Bloqueador');
+    const descPend = esc2((p.descricao||p.titulo||'').replace(/\b(SRV|EQ|FOR)-[\w-]+\s*/gi,'').trim());
     pontosAtencaoRows += `<tr>
-      <td style="padding:8px 10px;font-size:11px;font-weight:600">${esc2(p.descricao||p.titulo||'')}</td>
+      <td style="padding:8px 10px;font-size:11px;font-weight:600">${descPend}</td>
       <td style="padding:8px 10px;text-align:center"><span style="display:inline-block;padding:2px 8px;font-size:9px;font-weight:600;background:#FCE4EC;color:#C62828;border-radius:3px">${esc2(tipo)}</span></td>
       <td style="padding:8px 10px;font-size:11px;color:#666">${esc2(p.impacto||'Verificar urgência')}</td>
     </tr>`;
@@ -1974,8 +1978,6 @@ ${finBandHtml}
 
   ${proxSemHtml.replace(/sec-n">\d+/,'sec-n">0'+(++secNum))}
 
-  <div class="sec"><span class="sec-n">0${++secNum}</span><span class="sec-t">Registro Fotográfico</span></div>
-  ${fotosHtml}
 </div>
 <div class="rdp">
   <div class="rdp-l">${esc2(c.empresa||'Berti Construtora LTDA')} · ${esc2(c.email_empresa||c.tel_empresa?((c.email_empresa||'')+(c.tel_empresa?' · '+c.tel_empresa:'')):'')}</div>
